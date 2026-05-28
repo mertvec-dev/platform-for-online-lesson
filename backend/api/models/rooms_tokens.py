@@ -28,7 +28,7 @@ class RoomToken(SQLModel, table=True):
     rooms_id: int = Field(foreign_key="rooms.id")
 
     # Идентификатор пользователя
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="users.id")
 
     # Токен
     token: str = Field()

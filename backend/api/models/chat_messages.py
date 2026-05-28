@@ -24,10 +24,10 @@ class ChatMessage(SQLModel, table=True):
     id: int = Field(primary_key=True)
 
     # Идентификатор комнаты
-    room_id: int = Field(foreign_key="room.id")
+    room_id: int = Field(foreign_key="rooms.id")
 
     # Идентификатор пользователя
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="users.id")
 
     # Текст сообщения
     text: str = Field()

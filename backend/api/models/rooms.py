@@ -1,58 +1,88 @@
 """Модель таблицы rooms"""
 
-# Время
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-# Для модели таблицы
-from sqlmodel import Field, SQLModel
-from sqlmodel.main import Relationship
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .chat_messages import ChatMessage
+    from .lessons import Lesson
+    from .rooms_livekit_tokens import LivekitRoomToken
     from .users import User
 
 
 class Room(SQLModel, table=True):
-    """
-    Модель для таблицы rooms
+    __tablename__ = "rooms"  # type: ignore[attr-defined]
 
-    Поля:
-        id: int - Идентификатор комнаты; Первичный ключ
-        teacher_id: int - Идентификатор преподавателя; Внешний ключ (c таблицы users)
-        slug: str - Ссылка комнаты; Уникальный идентификатор комнаты
-        max_participants: int - Максимальное количество участников; По умолчанию 50
-        created_at: datetime - Дата и время создания комнаты; По умолчанию текущее время
-        is_active: bool - Флаг активности комнаты; По умолчанию True
-    """
+    id: int = Field(
+        primary_key=True,
+        index=True,
+        sa_column_kwargs={"autoincrement": True},
+    )
 
-    # Название таблицы
-    __tablename__ = "rooms"
+    teacher_id: int = Field(
+        foreign_key="users.id",
+        nullable=False,
+        index=True,
+    )
 
-    # Идентификатор комнаты
-    id: int = Field(primary_key=True, unique=True, index=True)
+    title: str = Field(
+        min_length=1,
+        max_length=60,
+    )
+    description: str = Field(
+        min_length=10,
+        max_length=300,
+    )
 
-    # Идентификатор преподавателя
-    teacher_id: int = Field(foreign_key="users.id")
+    slug: str = Field(
+        min_length=1,
+        max_length=64,
+        unique=True,
+        index=True,
+    )
 
-    # Ссылка на занятие (генерируется каждый разв слое API, по uuid4)
-    # Например, https://lesson.com/rooms/<uuid4>
-    slug: str = Field()
+    max_participants: int = Field(
+        default=50,
+        ge=1,
+        le=50,
+    )
 
-    # Максимальное количество участников
-    max_participants: int = Field(default=50)
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+    )
+    started_at: datetime | None = Field(
+        default=None,
+    )
+    ended_at: datetime | None = Field(
+        default=None,
+    )
 
-    # Дата и время создания комнаты
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    is_active: bool = Field(
+        default=True,
+        index=True,
+    )
 
-    # Флаг активности комнаты
-    is_active: bool = Field(default=True)
+    # Отношения
+    teacher: "User" = Relationship(
+        back_populates="rooms"
+    )  # Отношение много к одному: много комнат --> один преподаватель
 
-    # Далее идут поля, которые могут быть использованы (расскоментировать, если нужно)
-    # started_at: datetime # Когда занятие началось
-    # ended_at: datetime # Когда занятие завершилось
-    # title: str # Название занятия
+    messages: list["ChatMessage"] = Relationship(
+        back_populates="room",
+        cascade_delete=True,
+        passive_deletes=True,
+    )  # Отношение один к многим: одна комната --> много сообщений
 
-    # Отношения таблиц
-    teacher: "User" = Relationship(back_populates="rooms")
-    messages: list["ChatMessage"] = Relationship(back_populates="room")
+    lessons: list["Lesson"] = Relationship(
+        back_populates="room",
+        cascade_delete=True,
+        passive_deletes=True,
+    )  # Отношение одно к многим: одна комната --> много уроков
+
+    tokens: list["LivekitRoomToken"] = Relationship(
+        back_populates="room",
+        cascade_delete=True,
+        passive_deletes=True,
+    )  # Отношение одно к многим: одна комната --> много токенов

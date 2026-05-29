@@ -1,36 +1,46 @@
 """Модель таблицы chat_messages"""
 
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from .rooms import Room
+    from .users import User
 
 
 class ChatMessage(SQLModel, table=True):
-    """
-    Модель для таблицы chat_messages
+    __tablename__ = "chat_messages"  # type: ignore[attr-defined]
 
-    Поля:
-        id: int - Идентификатор сообщения
-        room_id: int - Идентификатор комнаты
-        user_id: int - Идентификатор пользователя
-        text: str - Текст сообщения
-        created_at: datetime - Дата и время создания сообщения
-    """
+    id: int = Field(
+        primary_key=True, index=True, sa_column_kwargs={"autoincrement": True}
+    )
 
-    # Название таблицы
-    __tablename__ = "chat_messages"
+    room_id: int = Field(
+        foreign_key="rooms.id",
+        index=True,
+        ondelete="CASCADE",
+    )
 
-    # Идентификатор сообщения
-    id: int = Field(primary_key=True)
+    author_id: int = Field(
+        foreign_key="users.id",
+        index=True,
+    )
 
-    # Идентификатор комнаты
-    room_id: int = Field(foreign_key="rooms.id")
+    text: str = Field(
+        max_length=500,
+    )
 
-    # Идентификатор пользователя
-    user_id: int = Field(foreign_key="users.id")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
 
-    # Текст сообщения
-    text: str = Field()
-
-    # Дата и время создания сообщения
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Отношения
+    room: "Room" = Relationship(
+        back_populates="messages"
+    )  # Отношение многое к одному: много сообщений --> одна комната
+    author: "User" = Relationship(
+        back_populates="sent_messages"
+    )  # Отношение многое к одному: много пользователей --> одна комната

@@ -21,6 +21,11 @@ class Config(BaseSettings):
 
     DATABASE_URL: str = ""
 
+    # === Redis ===
+    REDIS_HOST: str = Field(default="redis", description="Хост Redis")
+    REDIS_PORT: int = Field(default=6379, description="Порт Redis")
+    REDIS_PASSWORD: str = Field(default=DEFAULT_SECRET, description="Пароль Redis")
+
     # === Безопасность API ===
     WEBHOOK_SECRET: str = Field(
         default=DEFAULT_SECRET,
@@ -40,7 +45,7 @@ class Config(BaseSettings):
     def model_post_init(self, __context):
         """Инициализация DATABASE_URL из переменных окружения, если в `.env` не указано значение"""
         if not self.DATABASE_URL:
-            self.DATABASE_URL = f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@db:5432/{self.POSTGRES_DB}"
+            self.DATABASE_URL = f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@database:5432/{self.POSTGRES_DB}"
 
     @model_validator(mode="after")
     def check_security(self) -> Self:
@@ -51,6 +56,7 @@ class Config(BaseSettings):
             "POSTGRES_PASSWORD": self.POSTGRES_PASSWORD,
             "WEBHOOK_SECRET": self.WEBHOOK_SECRET,
             "JWT_SECRET_KEY": self.JWT_SECRET_KEY,
+            "REDIS_PASSWORD": self.REDIS_PASSWORD,
         }
 
         for name, value in secret_fields.items():

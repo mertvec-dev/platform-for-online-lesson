@@ -1,8 +1,10 @@
 """Модель таблицы lessons"""
 
 from datetime import datetime, timezone
+from enum import Enum
 from typing import TYPE_CHECKING
 
+from sqlalchemy import CheckConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
@@ -10,8 +12,21 @@ if TYPE_CHECKING:
     from .rooms import Room
 
 
+class LessonStatus(str, Enum):
+    SCHEDULED = "scheduled"
+    RUNNING = "running"
+    ENDED = "ended"
+
+
 class Lesson(SQLModel, table=True):
     __tablename__ = "lessons"  # type: ignore[attr-defined]
+
+    __table_args__ = (
+        CheckConstraint(
+            "ended_at IS NULL OR started_at IS NULL OR ended_at >= started_at",
+            name="ck_lessons_ended_after_started",
+        ),
+    )
 
     id: int = Field(
         primary_key=True,
@@ -34,16 +49,43 @@ class Lesson(SQLModel, table=True):
         max_length=300,
     )
 
+    status: LessonStatus = Field(
+        default=LessonStatus.SCHEDULED,
+        index=True,
+    )
+
+    # На какое время запланировано занятие
     scheduled_at: datetime = Field(
         nullable=False,
         index=True,
+    )
+
+    # Фактическое время начала занятия
+    started_at: datetime | None = Field(
+        default=None,
+        index=True,
+    )
+
+    # Фактическое время завершения занятия
+    ended_at: datetime | None = Field(
+        default=None,
+        index=True,
+    )
+
+    created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        index=True,
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
     )
 
     # Отношения
     room: "Room" = Relationship(
         back_populates="lessons"
-    )  # Отношение один к одному: один урок --> одна комната
+    )  # Отношение многие к одному: много уроков --> одна комната
 
     logs: list["LessonLog"] = Relationship(
         back_populates="lesson",

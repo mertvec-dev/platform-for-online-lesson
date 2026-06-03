@@ -29,6 +29,7 @@ class ChatMessage(SQLModel, table=True):
     )
 
     text: str = Field(
+        min_length=1,
         max_length=500,
     )
 
@@ -36,11 +37,16 @@ class ChatMessage(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         index=True,
     )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        index=True,
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
+    )
 
     # Отношения
     room: "Room" = Relationship(
         back_populates="messages"
-    )  # Отношение многое к одному: много сообщений --> одна комната
+    )  # Отношение многие к одному: много сообщений --> одна комната
     author: "User" = Relationship(
         back_populates="sent_messages"
-    )  # Отношение многое к одному: много пользователей --> одна комната
+    )  # Отношение многие к одному: много сообщений --> один пользователь

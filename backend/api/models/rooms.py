@@ -8,6 +8,9 @@ from sqlmodel import Field, Relationship, SQLModel
 if TYPE_CHECKING:
     from .chat_messages import ChatMessage
     from .lessons import Lesson
+    from .room_invites import RoomInvite
+    from .room_memberships import RoomMembership
+    from .room_teachers import RoomTeacher
     from .rooms_livekit_tokens import LivekitRoomToken
     from .users import User
 
@@ -21,7 +24,7 @@ class Room(SQLModel, table=True):
         sa_column_kwargs={"autoincrement": True},
     )
 
-    teacher_id: int = Field(
+    created_by_user_id: int = Field(
         foreign_key="users.id",
         nullable=False,
         index=True,
@@ -51,23 +54,22 @@ class Room(SQLModel, table=True):
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
+        index=True,
     )
-    started_at: datetime | None = Field(
-        default=None,
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        index=True,
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
     )
-    ended_at: datetime | None = Field(
-        default=None,
-    )
-
     is_active: bool = Field(
         default=True,
         index=True,
     )
 
     # Отношения
-    teacher: "User" = Relationship(
-        back_populates="rooms"
-    )  # Отношение много к одному: много комнат --> один преподаватель
+    created_by: "User" = Relationship(
+        back_populates="created_rooms",
+    )  # Отношение много к одному: много комнат --> один создатель
 
     messages: list["ChatMessage"] = Relationship(
         back_populates="room",
@@ -79,10 +81,28 @@ class Room(SQLModel, table=True):
         back_populates="room",
         cascade_delete=True,
         passive_deletes=True,
-    )  # Отношение одно к многим: одна комната --> много уроков
+    )  # Отношение один к многим: одна комната --> много уроков
 
     tokens: list["LivekitRoomToken"] = Relationship(
         back_populates="room",
         cascade_delete=True,
         passive_deletes=True,
-    )  # Отношение одно к многим: одна комната --> много токенов
+    )  # Отношение один к многим: одна комната --> много аудиторских записей токенов
+
+    memberships: list["RoomMembership"] = Relationship(
+        back_populates="room",
+        cascade_delete=True,
+        passive_deletes=True,
+    )  # Отношение один к многим: одна комната --> много участников
+
+    invites: list["RoomInvite"] = Relationship(
+        back_populates="room",
+        cascade_delete=True,
+        passive_deletes=True,
+    )  # Отношение один к многим: одна комната --> много invite-ссылок
+
+    teachers: list["RoomTeacher"] = Relationship(
+        back_populates="room",
+        cascade_delete=True,
+        passive_deletes=True,
+    )  # Отношение один к многим: одна комната --> много назначений преподавателей

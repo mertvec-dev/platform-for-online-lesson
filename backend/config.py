@@ -35,6 +35,10 @@ class Config(BaseSettings):
         default=DEFAULT_SECRET,
         description="Секрет для проверки сигнатуры JWT-токена",
     )
+    JWT_ALGORITHM: str = Field(
+        default="HS256",
+        description="Секрет для проверки сигнатуры JWT-токена",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -14,7 +14,7 @@ class RedisClient:
     """
 
     def __init__(self):
-        self.client: Optional[redis.Redis] = None
+        self._client: Optional[redis.Redis] = None
 
     def connect(self) -> None:
         self._client = redis.Redis(
@@ -25,11 +25,11 @@ class RedisClient:
         )
 
     async def close(self) -> None:
-        if self.client:
+        if self._client:
             await self._client.close()
 
     def get_client(self) -> redis.Redis:
-        if not self.client:
+        if not self._client:
             raise RuntimeError("Redis не инициализирован")
         return self._client
 
@@ -41,25 +41,25 @@ class RedisClient:
         """
         Устанавливает значение в кэш с опциональным TTL
         """
-        client = self.get_client()
+        local_client = self.get_client()
         if expire:
-            await client.set(key, value, ex=expire)
+            await local_client.set(key, value, ex=expire)
         else:
-            await client.set(key, value)
+            await local_client.set(key, value)
 
     async def get_cache(self, key: str) -> Optional[str]:
         """
         Возвращает значение из кэша по ключу
         """
-        client = self.get_client()
-        return await client.get(key)
+        local_client = self.get_client()
+        return await local_client.get(key)
 
     async def delete_cache(self, key: str) -> None:
         """
         Удаляет значение из кэша по ключу
         """
-        client = self.get_client()
-        await client.delete(key)
+        local_client = self.get_client()
+        await local_client.delete(key)
 
     # === rate-limiting ===
 
@@ -69,9 +69,9 @@ class RedisClient:
 
         Возвращает новое значение
         """
-        client = self.get_client()
+        _client = self.get_client()
 
-        pipe = client.pipeline()
+        pipe = _client.pipeline()
         pipe.incr(key)
         pipe.expire(key, ttl)
         result = await pipe.execute()
@@ -101,13 +101,13 @@ class RedisPubSub:
 
     async def publish(self, channel: str, message: str) -> int:
         """Публикация сообщения в канал"""
-        client = self.get_client()
-        return await client.publish(channel, message)
+        _client = self.get_client()
+        return await _client.publish(channel, message)
 
     async def subscribe(self, channel: str) -> PubSub:
         """Подписка на канал (возвращает pubsub объект)"""
-        client = self.get_client()
-        pubsub = client.pubsub()
+        _client = self.get_client()
+        pubsub = _client.pubsub()
         await pubsub.subscribe(channel)
         return pubsub
 

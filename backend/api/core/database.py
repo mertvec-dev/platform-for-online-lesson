@@ -1,7 +1,8 @@
 """В этом файле создается асинхронный движок для БД"""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,

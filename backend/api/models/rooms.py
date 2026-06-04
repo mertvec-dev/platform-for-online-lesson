@@ -46,12 +46,6 @@ class Room(SQLModel, table=True):
         index=True,
     )
 
-    max_participants: int = Field(
-        default=50,
-        ge=1,
-        le=50,
-    )
-
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         index=True,

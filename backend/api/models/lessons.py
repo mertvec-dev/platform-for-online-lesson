@@ -49,6 +49,11 @@ class Lesson(SQLModel, table=True):
         max_length=300,
     )
 
+    max_participants: int = Field(
+        default=50,
+        ge=1,
+        le=50,
+    )
     status: LessonStatus = Field(
         default=LessonStatus.SCHEDULED,
         index=True,

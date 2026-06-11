@@ -28,7 +28,8 @@ class Lesson(SQLModel, table=True):
         ),
     )
 
-    id: int = Field(
+    id: int | None = Field(
+        default=None,
         primary_key=True,
         sa_column_kwargs={"autoincrement": True},
     )

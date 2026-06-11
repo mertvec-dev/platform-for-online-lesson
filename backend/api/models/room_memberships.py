@@ -19,7 +19,8 @@ class RoomMembership(SQLModel, table=True):
         UniqueConstraint("room_id", "user_id", name="uq_room_memberships_room_user"),
     )
 
-    id: int = Field(
+    id: int | None = Field(
+        default=None,
         primary_key=True,
         index=True,
         sa_column_kwargs={"autoincrement": True},

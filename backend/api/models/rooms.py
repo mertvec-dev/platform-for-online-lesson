@@ -18,7 +18,8 @@ if TYPE_CHECKING:
 class Room(SQLModel, table=True):
     __tablename__ = "rooms"  # type: ignore[attr-defined]
 
-    id: int = Field(
+    id: int | None = Field(
+        default=None,
         primary_key=True,
         index=True,
         sa_column_kwargs={"autoincrement": True},

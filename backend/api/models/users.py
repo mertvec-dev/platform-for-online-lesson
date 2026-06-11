@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -25,10 +25,10 @@ class Role(str, Enum):
 class User(SQLModel, table=True):
     __tablename__ = "users"  # type: ignore[attr-defined]
 
-    id: int = Field(
+    id: int | None = Field(
+        default=None,
         primary_key=True,
         index=True,
-        sa_column_kwargs={"autoincrement": True},
     )
 
     first_name: str = Field(
@@ -49,6 +49,7 @@ class User(SQLModel, table=True):
         max_length=255,
         unique=True,
         index=True,
+        nullable=False,
     )
     role: Role = Field(
         default=Role.STUDENT,

@@ -13,8 +13,11 @@ if TYPE_CHECKING:
 class ChatMessage(SQLModel, table=True):
     __tablename__ = "chat_messages"  # type: ignore[attr-defined]
 
-    id: int = Field(
-        primary_key=True, index=True, sa_column_kwargs={"autoincrement": True}
+    id: int | None = Field(
+        default=None,
+        primary_key=True,
+        index=True,
+        sa_column_kwargs={"autoincrement": True},
     )
 
     room_id: int = Field(

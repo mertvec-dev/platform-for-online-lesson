@@ -13,11 +13,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
+      mailpit:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend
+    command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
 
   database:
     image: postgres:15-alpine
     container_name: database
+    ports:
+      - "5432:5432"
     env_file:
       - .env
     environment:
@@ -25,7 +31,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -35,6 +41,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
+    ports:
+      - "6379:6379"
     env_file:
       - .env
     command: redis-server --requirepass ${REDIS_PASSWORD}
@@ -45,3 +53,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Mailpit для локальной разработки
+  # (чтобы не спамить в реальные ящики, а использовать поднятый локально почтовик)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # WEB UI
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8025/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

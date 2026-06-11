@@ -1,0 +1,41 @@
+from .permissions import (
+    AccessPolicy,
+    Permission,
+    RolePermissions,
+    ensure_can_create_room,
+    ensure_can_delete_room,
+    ensure_can_manage_roles,
+    ensure_lesson_room_member_or_admin,
+    ensure_lesson_teacher_or_admin,
+    ensure_room_creator_or_admin,
+    ensure_room_member_or_admin,
+    ensure_room_teacher_or_admin,
+    get_lesson_or_404,
+    get_room_or_404,
+)
+from .rbac import (
+    get_current_user,
+    require_admin,
+    require_roles,
+    require_teacher_or_admin,
+)
+
+__all__ = [
+    "get_current_user",
+    "require_roles",
+    "require_admin",
+    "require_teacher_or_admin",
+    "Permission",
+    "RolePermissions",
+    "AccessPolicy",
+    "get_room_or_404",
+    "get_lesson_or_404",
+    "ensure_can_create_room",
+    "ensure_can_delete_room",
+    "ensure_can_manage_roles",
+    "ensure_room_creator_or_admin",
+    "ensure_room_member_or_admin",
+    "ensure_room_teacher_or_admin",
+    "ensure_lesson_room_member_or_admin",
+    "ensure_lesson_teacher_or_admin",
+]

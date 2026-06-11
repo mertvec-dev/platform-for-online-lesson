@@ -8,7 +8,7 @@ class RegistrationSchema(BaseModel):
         ...,
         min_length=3,
         max_length=255,
-        description="Логин пользователя",
+        description="Email пользователя",
         json_schema_extra={"example": "example@example.com"},
     )
     password: str = Field(
@@ -42,12 +42,12 @@ class RegistrationSchema(BaseModel):
 
 
 class AuthSchema(BaseModel):
+    """Логин — email + пароль"""
+
     email: EmailStr = Field(
         ...,
-        min_length=3,
-        max_length=255,
-        description="Логин пользователя",
-        json_schema_extra={"example": "example@example.com"},
+        description="Email пользователя",
+        json_schema_extra={"example": "user@example.com"},
     )
     password: str = Field(
         ...,
@@ -58,19 +58,9 @@ class AuthSchema(BaseModel):
     )
 
 
-class TokenPairResponse(BaseModel):
-    access_token: str = Field(..., description="Токен доступа к системе")
-    refresh_token: str = Field(..., description="Токен обновления токена доступа")
+class TokenPair(BaseModel):
+    """Пара access + refresh токенов"""
+
+    access_token: str = Field(..., description="Токен доступа")
+    refresh_token: str = Field(..., description="Токен обновления")
     token_type: str = Field(default="bearer", description="Тип токена")
-
-
-class RegistrationSuccessResponse(BaseModel):
-    is_success: bool = Field(default=True, description="Флаг успешности")
-    message: str = Field(default="Регистрация успешна", description="Сообщение")
-    data: TokenPairResponse = Field(..., description="Выданные токены")
-
-
-class RegistrationFailResponse(BaseModel):
-    is_success: bool = Field(default=False, description="Флаг успешности")
-    message: str = Field(..., description="Сообщение об ошибке")
-    data: None = Field(default=None, description="Данные отсутствуют")

@@ -1,10 +1,4 @@
-from .auth import (
-    AuthSchema,
-    RegistrationFailResponse,
-    RegistrationSchema,
-    RegistrationSuccessResponse,
-    TokenPairResponse,
-)
+from .auth import AuthSchema, RegistrationSchema, TokenPair
 from .chat_message import (
     ChatMessageListItem,
     ChatMessageRead,
@@ -30,6 +24,7 @@ from .livekit_token import (
     LivekitTokenRead,
     UpdateLivekitTokenAudit,
 )
+from .response import ApiResponse
 from .room import CreateRoom, RoomListItem, RoomRead, UpdateRoom
 from .room_invite import (
     CreateRoomInvite,
@@ -39,7 +34,6 @@ from .room_invite import (
     UpdateRoomInvite,
 )
 from .room_membership import (
-    AddRoomMembership,
     RoomMembershipListItem,
     RoomMembershipRead,
     UpdateRoomMembership,
@@ -50,9 +44,8 @@ from .user import UpdateUser, UserListItem, UserRead
 __all__ = [
     "AuthSchema",
     "RegistrationSchema",
-    "RegistrationSuccessResponse",
-    "RegistrationFailResponse",
-    "TokenPairResponse",
+    "TokenPair",
+    "ApiResponse",
     "CreateRoom",
     "UpdateRoom",
     "RoomRead",
@@ -68,10 +61,9 @@ __all__ = [
     "JoinRoomByInvite",
     "RoomInviteRead",
     "RoomInviteListItem",
-    "AddRoomMembership",
-    "UpdateRoomMembership",
     "RoomMembershipRead",
     "RoomMembershipListItem",
+    "UpdateRoomMembership",
     "AddRoomTeacher",
     "RoomTeacherRead",
     "RoomTeacherListItem",

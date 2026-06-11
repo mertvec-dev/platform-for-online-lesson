@@ -30,4 +30,5 @@ class UserListItem(BaseModel):
 class UpdateUser(BaseModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=100)
     last_name: str | None = Field(default=None, min_length=1, max_length=100)
+    role: Role | None = Field(default=None)
     is_active: bool | None = Field(default=None)

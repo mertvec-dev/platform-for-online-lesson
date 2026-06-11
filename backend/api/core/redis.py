@@ -1,6 +1,6 @@
 """Конфигурация Redis"""
 
-from typing import Optional
+from typing import Any, Optional, cast
 
 import redis.asyncio as redis
 from redis.asyncio.client import PubSub
@@ -27,6 +27,7 @@ class RedisClient:
     async def close(self) -> None:
         if self._client:
             await self._client.close()
+            self._client = None
 
     def get_client(self) -> redis.Redis:
         if not self._client:
@@ -36,7 +37,7 @@ class RedisClient:
     # === Методы кэша ===
 
     async def set_cache(
-        self, key: str, value: str, expire: Optional[int] = None
+        self, key: str, value: Any, expire: Optional[int] = None
     ) -> None:
         """
         Устанавливает значение в кэш с опциональным TTL
@@ -52,7 +53,7 @@ class RedisClient:
         Возвращает значение из кэша по ключу
         """
         local_client = self.get_client()
-        return await local_client.get(key)
+        return cast(Optional[str], await local_client.get(key))
 
     async def delete_cache(self, key: str) -> None:
         """
@@ -77,10 +78,16 @@ class RedisClient:
         result = await pipe.execute()
         return result[0]
 
-    async def is_rate_limited(self, key: str, limit: int, window: int) -> bool:
+    async def is_rate_limited(
+        self, key: str, limit: int, window: int, scope: str = "default"
+    ) -> bool:
         """
         Проверяет, превышен ли лимит запросов для заданного ключа
+
+        `scope` — спецификатор для разделения счетчиков,
+        чтобы разные операции не пересекались по ключам.
         """
+        key = f"{key}:{scope}"
         count = await self.incr_with_ttl(key, window)
         return count > limit
 

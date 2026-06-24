@@ -6,33 +6,38 @@
 
 
 def chat_channel(room_id: int) -> str:
-    """chat:room:<room_id> — канал Pub/Sub для чата комнаты"""
+    """`chat:room:<room_id>` — канал Pub/Sub для чата комнаты"""
     return f"{CHAT_ROOM}:{room_id}"
 
 
 def verify_code_key(email: str) -> str:
-    """verify:code:<email> — код верификации"""
+    """`verify:code:<email>`— код верификации"""
     return f"{VERIFY_CODE}:{email}"
 
 
 def email_verified_key(email: str) -> str:
-    """email:verified:<email> — флаг, что почта подтверждена (TTL)"""
+    """`email:verified:<email>` — флаг, что почта подтверждена (TTL)"""
     return f"{EMAIL_VERIFIED}:{email}"
 
 
 def ratelimit_send_key(email: str) -> str:
-    """ratelimit:verify:send:<email> — счётчик отправок кода"""
+    """`ratelimit:verify:send:<email>` — счётчик отправок кода"""
     return f"{RATELIMIT_SEND}:{email}"
 
 
 def ratelimit_check_key(email: str) -> str:
-    """ratelimit:verify:check:<email> — счётчик попыток проверки кода"""
+    """`ratelimit:verify:check:<email>` — счётчик попыток проверки кода"""
     return f"{RATELIMIT_CHECK}:{email}"
 
 
 def refresh_jti_key(jti: str) -> str:
-    """refresh:jti:<uuid> — whitelist валидных refresh-токенов"""
+    """`refresh:jti:<uuid>` — whitelist валидных refresh-токенов"""
     return f"{REFRESH_JTI}:{jti}"
+
+
+def registration_key(email: str) -> str:
+    """`registration:<email>` — временные данные регистрации (password_hash|first_name|last_name)"""
+    return f"{REGISTRATION}:{email}"
 
 
 # =============================================================================
@@ -41,6 +46,7 @@ def refresh_jti_key(jti: str) -> str:
 
 CHAT_ROOM = "chat:room"
 VERIFY_CODE = "verify:code"
+REGISTRATION = "registration"
 EMAIL_VERIFIED = "email:verified"
 RATELIMIT_SEND = "ratelimit:verify:send"
 RATELIMIT_CHECK = "ratelimit:verify:check"

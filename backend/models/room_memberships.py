@@ -75,6 +75,6 @@ class RoomMembership(SQLModel, table=True):
         back_populates="room_memberships",
     )  # Отношение многие к одному: много записей membership --> один пользователь
 
-    invite: "RoomInvite | None" = Relationship(
+    invite: "RoomInvite" = Relationship(
         back_populates="memberships",
     )  # Отношение многие к одному: много вступлений могут ссылаться на одно приглашение

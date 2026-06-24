@@ -5,14 +5,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from ..routers import auth_router, ws_chat_router
+from ..endpoints.auth.router import auth_router
+from ..endpoints.chat.router import ws_router as ws_chat_router
 from .exception_handlers import http_exception_handler, validation_exception_handler
 from .lifespan import app_lifespan
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="platform_for_online_lesson",  # ИЗМЕНИТЬ ПРИ ВЫБОРЕ НАЗВАНИЯ СЕРВИСА
+        title="platform_for_online_lesson",
         version="0.0.1",
         lifespan=app_lifespan,
     )

@@ -3,7 +3,8 @@ __pycache__/
 .env
 *.pyc
 .env.local
-
+.zed
 backend/docs/ROADMAP.md
 backend/docs/DECISIONS.md
 backend/docs/PROPOSALS.md
+data/

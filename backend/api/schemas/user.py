@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
-from ..models.users import Role
+from ...models.users import Role
 
 
 class UserRead(BaseModel):

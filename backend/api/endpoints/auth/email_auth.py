@@ -9,21 +9,20 @@ import aiosmtplib
 from fastapi import HTTPException, status
 from jinja2 import Environment, FileSystemLoader
 
-from ...config import settings
-from ..core import redis_client
-from ..core.redis_keys import (
+from ...core import redis_client
+from ...core.config import settings
+from ...core.redis_keys import (
     CHECK_LIMIT,
     CHECK_WINDOW,
     CODE_TTL,
     SEND_LIMIT,
     SEND_WINDOW,
-    email_verified_key,
     ratelimit_check_key,
     ratelimit_send_key,
     verify_code_key,
 )
 
-_templates_dir = Path(__file__).resolve().parent.parent / "templates" / "email"
+_templates_dir = Path(__file__).resolve().parent.parent.parent / "templates" / "email"
 _jinja = Environment(loader=FileSystemLoader(str(_templates_dir)))
 
 
@@ -55,7 +54,8 @@ async def verify_code(email: str, code: str) -> bool:
     Сверяет код из Redis с переданным.
 
     Rate-limit: не более CHECK_LIMIT попыток за CHECK_WINDOW секунд.
-    При успехе — удаляет код и ставит флаг email_verified (TTL как у кода).
+
+    При успехе — удаляет код из Redis.
     """
     count = await redis_client.incr_with_ttl(ratelimit_check_key(email), CHECK_WINDOW)
     if count > CHECK_LIMIT:
@@ -65,27 +65,10 @@ async def verify_code(email: str, code: str) -> bool:
         )
 
     stored = await redis_client.get_cache(verify_code_key(email))
-    if stored is None:
-        return False
-    if stored != code:
+    if stored is None or stored != code:
         return False
 
     await redis_client.delete_cache(verify_code_key(email))
-    # Ставим флаг — почта подтверждена (TTL как у кода, чтобы успеть зарегистрироваться)
-    await redis_client.set_cache(email_verified_key(email), "1", expire=CODE_TTL)
-    return True
-
-
-async def is_email_verified(email: str) -> bool:
-    """
-    Проверяет, что почта была подтверждена.
-
-    При успехе — удаляет флаг, чтобы нельзя было использовать повторно.
-    """
-    stored = await redis_client.get_cache(email_verified_key(email))
-    if stored is None:
-        return False
-    await redis_client.delete_cache(email_verified_key(email))
     return True
 
 

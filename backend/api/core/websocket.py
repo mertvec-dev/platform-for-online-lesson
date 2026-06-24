@@ -1,5 +1,5 @@
 """
-WebSocket Connection Manager (Pub/Sub)
+WebSocket Connection Manager
 
 Каждое подключение подписывается на Redis-канал комнаты.
 Сообщения идут через Redis Pub/Sub — прозрачно между серверами.
@@ -14,6 +14,7 @@ WebSocket Connection Manager (Pub/Sub)
 
 import asyncio
 import json
+from typing import Any
 
 from fastapi import WebSocket
 from redis.asyncio.client import PubSub
@@ -53,7 +54,7 @@ class ConnectionManager:
                     msg = json.loads(raw)
                 except json.JSONDecodeError:
                     continue
-                # Не шлём отправителю его же сообщение
+
                 if msg.get("sender_id") == user_id:
                     continue
                 try:
@@ -75,11 +76,11 @@ class ConnectionManager:
             task.cancel()
         self._sockets.pop(key, None)
 
-    async def broadcast(self, room_id: int, message: str):
+    async def broadcast(self, room_id: int, payload: dict[str, Any]):
         """
         Публикует сообщение в Redis-канал комнаты.
         """
-        await redis_pubsub.publish(chat_channel(room_id), message)
+        await redis_pubsub.publish(chat_channel(room_id), json.dumps(payload))
 
 
 websocket_manager = ConnectionManager()

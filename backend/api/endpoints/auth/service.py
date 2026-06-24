@@ -5,13 +5,17 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...config import settings
-from ..core import redis_client
-from ..core.redis_keys import refresh_jti_key
-from ..models import User
-from ..schemas import TokenPair
-from ..utils import create_token, extract_user_id, verify_token
-from ..utils.email_auth import is_email_verified
+from ....models import User
+from ...core import redis_client
+from ...core.config import settings
+from ...core.redis_keys import (
+    CODE_TTL,
+    refresh_jti_key,
+    registration_key,
+)
+from .email_auth import request_verification, verify_code
+from .jwt_tokens import create_token, extract_user_id, verify_token
+from .schemas import TokenPair
 
 
 class AuthService:
@@ -37,41 +41,78 @@ class AuthService:
 
         return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
-    async def register(
+    async def request_registration(
         self,
         email: str,
         password: str,
         first_name: str,
         last_name: str,
         db_session: AsyncSession,
-    ) -> TokenPair:
-        if not await is_email_verified(email):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Почта не подтверждена. Сначала запросите код.",
-            )
-
-        result = await db_session.execute(
+    ) -> None:
+        """Сохраняет данные в Redis и отправляет код на почту."""
+        existing = await db_session.execute(
             select(User).where(User.email == email)  # type: ignore[arg-type]
         )
-        if result.scalar():
+        if existing.scalar():
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Пользователь уже существует",
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Пользователь с такой почтой уже существует",
             )
 
         hashed_password = hashpw(password.encode(), gensalt()).decode()
-        new_user = User(
+        await redis_client.set_cache(
+            registration_key(email),
+            f"{hashed_password}|{first_name}|{last_name}",
+            expire=CODE_TTL,
+        )
+
+        await request_verification(email)
+
+    async def confirm_registration(
+        self,
+        email: str,
+        code: str,
+        db_session: AsyncSession,
+    ) -> TokenPair:
+        """Сверяет код, создаёт пользователя в БД, возвращает токены."""
+        if not await verify_code(email, code):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Неверный или истёкший код подтверждения",
+            )
+
+        reg_data = await redis_client.get_cache(registration_key(email))
+        if reg_data is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Данные регистрации истекли. Зарегистрируйтесь заново.",
+            )
+
+        password_hash, first_name, last_name = reg_data.split("|")
+
+        existing = await db_session.execute(
+            select(User).where(User.email == email)  # type: ignore[arg-type]
+        )
+        if existing.scalar():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Пользователь с такой почтой уже существует",
+            )
+
+        user = User(
             email=email,
-            password_hash=hashed_password,
+            password_hash=password_hash,
             first_name=first_name,
             last_name=last_name,
+            is_active=True,
         )
-        db_session.add(new_user)
+        db_session.add(user)
         await db_session.commit()
-        assert new_user.id is not None
+        assert user.id is not None
 
-        return await self._make_token_pair(new_user.id)
+        await redis_client.delete_cache(registration_key(email))
+
+        return await self._make_token_pair(user.id)
 
     async def login(
         self,
@@ -87,6 +128,12 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Пользователь не найден",
+            )
+
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Почта не подтверждена. Проверьте письмо и введите код.",
             )
 
         if not checkpw(password.encode(), user.password_hash.encode()):
@@ -141,3 +188,6 @@ class AuthService:
 
         assert user.id is not None
         return await self._make_token_pair(user.id)
+
+
+auth_service = AuthService()

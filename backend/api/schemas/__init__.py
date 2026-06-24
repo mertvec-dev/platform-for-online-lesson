@@ -1,3 +1,4 @@
+from ..core.response import ApiResponse
 from .auth import AuthSchema, RegistrationSchema, TokenPair
 from .chat_message import (
     ChatMessageListItem,
@@ -24,7 +25,6 @@ from .livekit_token import (
     LivekitTokenRead,
     UpdateLivekitTokenAudit,
 )
-from .response import ApiResponse
 from .room import CreateRoom, RoomListItem, RoomRead, UpdateRoom
 from .room_invite import (
     CreateRoomInvite,

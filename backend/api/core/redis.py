@@ -5,7 +5,7 @@ from typing import Any, Optional, cast
 import redis.asyncio as redis
 from redis.asyncio.client import PubSub
 
-from ...config import settings
+from .config import settings
 
 
 class RedisClient:

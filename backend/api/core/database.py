@@ -1,7 +1,6 @@
 """В этом файле создается асинхронный движок для БД"""
 
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import (
@@ -12,7 +11,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import SQLModel
 
-from ...config import settings
+from .config import settings
 
 
 class Database:
@@ -32,7 +31,7 @@ class Database:
         Вызывается один раз при старте приложения.
         """
         if self._engine is not None:
-            return  # Защита от повторной инициализации
+            return
 
         self._engine = create_async_engine(
             self.database_url,
@@ -57,12 +56,9 @@ class Database:
             self._engine = None
             self._session_maker = None
 
-    @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """
-        Контекстный менеджер для получения сессии.
-
-        Гарантирует закрытие сессии даже при падении исключений.
+        FastAPI-зависимость: выдаёт сессию и закрывает после запроса.
         """
         if self._session_maker is None:
             raise RuntimeError("База данных не инициализирована. Вызовите connect()")

@@ -6,10 +6,10 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from ..core import db
-from ..models import User
-from ..models.users import Role
-from ..utils import get_current_user_id
+from ...core import db
+from ....models import User
+from ....models.users import Role
+from .jwt_tokens import get_current_user_id
 
 
 async def get_current_user(

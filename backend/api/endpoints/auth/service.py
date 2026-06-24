@@ -133,7 +133,7 @@ class AuthService:
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Почта не подтверждена. Проверьте письмо и введите код.",
+                detail="Аккаунт деактивирован",
             )
 
         if not checkpw(password.encode(), user.password_hash.encode()):

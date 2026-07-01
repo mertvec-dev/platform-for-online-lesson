@@ -1,0 +1,35 @@
+[project]
+name = "platform-for-online-lesson"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.mypy]
+strict = true
+plugins = "sqlalchemy.ext.mypy.plugin"
+
+[[tool.mypy.overrides]]
+module = [
+    "livekit",
+    "livekit.*",
+    "livekit_api",
+    "livekit_api.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "backend.models.*",
+    "backend.api.*",
+]
+disable_error_code = ["arg-type", "attr-defined"]
+
+[tool.pyright]
+typeCheckingMode = "standard"
+reportUnknownArgumentType = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownLambdaType = false
+reportArgumentType = false
+reportAttributeAccessIssue = false
+reportOptionalMemberAccess = false

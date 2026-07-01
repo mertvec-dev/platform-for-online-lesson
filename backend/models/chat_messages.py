@@ -3,25 +3,24 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+from sqlalchemy import DateTime, String
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from .rooms import Room
+    from .courses import Course
     from .users import User
 
 
 class ChatMessage(SQLModel, table=True):
     __tablename__ = "chat_messages"  # type: ignore[attr-defined]
 
-    id: int | None = Field(
+    id: int = Field(
         default=None,
         primary_key=True,
-        index=True,
-        sa_column_kwargs={"autoincrement": True},
     )
 
-    room_id: int = Field(
-        foreign_key="rooms.id",
+    course_id: int = Field(
+        foreign_key="courses.id",
         index=True,
         ondelete="CASCADE",
     )
@@ -29,27 +28,21 @@ class ChatMessage(SQLModel, table=True):
     author_id: int = Field(
         foreign_key="users.id",
         index=True,
+        ondelete="RESTRICT",
     )
 
     text: str = Field(
         min_length=1,
         max_length=500,
+        sa_type=String(500),  # type: ignore[arg-type]
     )
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
+        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
         index=True,
-    )
-    updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        index=True,
-        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
     )
 
     # Отношения
-    room: "Room" = Relationship(
-        back_populates="messages"
-    )  # Отношение многие к одному: много сообщений --> одна комната
-    author: "User" = Relationship(
-        back_populates="sent_messages"
-    )  # Отношение многие к одному: много сообщений --> один пользователь
+    room: "Course" = Relationship(back_populates="messages")
+    author: "User" = Relationship(back_populates="sent_messages")

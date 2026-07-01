@@ -8,15 +8,15 @@ from ...models.users import Role
 class Permission(str, Enum):
     """Все возможные действия в системе."""
 
-    # Комнаты
-    ROOM_VIEW = "room:view"
-    ROOM_CREATE = "room:create"
-    ROOM_UPDATE = "room:update"
-    ROOM_DELETE = "room:delete"
-    ROOM_MANAGE_TEACHERS = "room:manage_teachers"
-    ROOM_MANAGE_INVITES = "room:manage_invites"
-    ROOM_VIEW_MEMBERS = "room:view_members"
-    ROOM_REMOVE_MEMBERS = "room:remove_members"
+    # Курсы
+    COURSE_VIEW = "course:view"
+    COURSE_CREATE = "course:create"
+    COURSE_UPDATE = "course:update"
+    COURSE_DELETE = "course:delete"
+    COURSE_MANAGE_TEACHERS = "course:manage_teachers"
+    COURSE_MANAGE_INVITES = "course:manage_invites"
+    COURSE_VIEW_MEMBERS = "course:view_members"
+    COURSE_REMOVE_MEMBERS = "course:remove_members"
 
     # Уроки
     LESSON_VIEW = "lesson:view"
@@ -45,15 +45,15 @@ class RolePermissions:
     Отвечает только на вопрос:
         «Может ли роль X в принципе выполнять действие Y?»
 
-    Контекст ресурса (чья комната, состоит ли участник и т.п.)
+    Контекст ресурса (чей курс, состоит ли участник и т.п.)
     проверяется отдельно в доменных AccessPolicy.
     """
 
     _permissions_by_role: dict[Role, frozenset[Permission]] = {
         Role.STUDENT: frozenset(
             {
-                Permission.ROOM_VIEW,
-                Permission.ROOM_VIEW_MEMBERS,
+                Permission.COURSE_VIEW,
+                Permission.COURSE_VIEW_MEMBERS,
                 Permission.LESSON_VIEW,
                 Permission.MEMBERSHIP_JOIN,
                 Permission.MEMBERSHIP_LEAVE,
@@ -62,13 +62,13 @@ class RolePermissions:
         ),
         Role.TEACHER: frozenset(
             {
-                Permission.ROOM_VIEW,
-                Permission.ROOM_CREATE,
-                Permission.ROOM_UPDATE,
-                Permission.ROOM_MANAGE_TEACHERS,
-                Permission.ROOM_MANAGE_INVITES,
-                Permission.ROOM_VIEW_MEMBERS,
-                Permission.ROOM_REMOVE_MEMBERS,
+                Permission.COURSE_VIEW,
+                Permission.COURSE_CREATE,
+                Permission.COURSE_UPDATE,
+                Permission.COURSE_MANAGE_TEACHERS,
+                Permission.COURSE_MANAGE_INVITES,
+                Permission.COURSE_VIEW_MEMBERS,
+                Permission.COURSE_REMOVE_MEMBERS,
                 Permission.LESSON_VIEW,
                 Permission.LESSON_CREATE,
                 Permission.LESSON_UPDATE,

@@ -13,7 +13,7 @@ class RegistrationSchema(BaseModel):
     )
     password: str = Field(
         ...,
-        min_length=8,
+        min_length=12,
         max_length=128,
         description="Пароль пользователя",
         json_schema_extra={"example": "superstrongpassword"},
@@ -32,13 +32,44 @@ class RegistrationSchema(BaseModel):
         description="Фамилия пользователя",
         json_schema_extra={"example": "Doe"},
     )
+    teacher_invite_token: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Токен приглашения преподавателя",
+    )
 
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
-        if len(value) < 8:
-            raise ValueError("Пароль должен содержать не менее 8 символов")
+        if len(value) < 12:
+            raise ValueError("Пароль должен содержать не менее 12 символов")
         return value
+
+
+class VerifyEmailSchema(BaseModel):
+    """Подтверждение почты — email + код из письма"""
+
+    email: EmailStr = Field(
+        ...,
+        description="Email, на который был отправлен код",
+    )
+    code: str = Field(
+        ...,
+        min_length=6,
+        max_length=6,
+        pattern=r"^\d{6}$",
+        description="6-значный код из письма",
+    )
+
+
+class RefreshTokenSchema(BaseModel):
+    """Обновление токенов — действующий refresh-токен"""
+
+    refresh_token: str = Field(
+        ...,
+        min_length=1,
+        description="Действующий refresh-токен",
+    )
 
 
 class AuthSchema(BaseModel):
@@ -51,7 +82,7 @@ class AuthSchema(BaseModel):
     )
     password: str = Field(
         ...,
-        min_length=8,
+        min_length=12,
         max_length=128,
         description="Пароль пользователя",
         json_schema_extra={"example": "superstrongandpowerfulpassword"},

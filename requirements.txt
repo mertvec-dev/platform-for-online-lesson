@@ -22,3 +22,11 @@ sqlmodel==0.0.38
 starlette==1.1.0
 typing-extensions==4.15.0
 uvicorn==0.48.0
+python-slugify
+livekit>=1.1.13
+livekit-api>=1.1.1
+aiosqlite==0.21.0
+pytest==8.3.5
+pytest-asyncio==0.25.3
+pytest-cov==6.0.0
+httpx==0.28.1

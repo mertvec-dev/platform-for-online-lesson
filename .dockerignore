@@ -9,3 +9,4 @@ __pycache__/
 *.md
 data/
 .zed/
+AGENTS.md

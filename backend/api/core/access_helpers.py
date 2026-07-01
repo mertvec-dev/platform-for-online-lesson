@@ -4,55 +4,73 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from ...models import Lesson, Room, RoomMembership, RoomTeacher
+from ...models import Course, CourseInvite, CourseMembership, CourseTeacher, Lesson
 from .database import db
 
 
-async def _room_membership_exists(
+async def _course_membership_exists(
     session: AsyncSession,
-    room_id: int,
+    course_id: int,
     user_id: int,
 ) -> bool:
     """Проверяет, есть ли у пользователя активное участие в комнате"""
-    statement = select(RoomMembership).where(
-        RoomMembership.room_id == room_id,
-        RoomMembership.user_id == user_id,
-        RoomMembership.is_active,
+    statement = select(CourseMembership).where(
+        CourseMembership.course_id == course_id,
+        CourseMembership.user_id == user_id,
+        CourseMembership.is_active,
     )
     result = await session.execute(statement)
     return result.scalar_one_or_none() is not None
 
 
-async def _room_teacher_assignment_exists(
+async def _course_teacher_assignment_exists(
     session: AsyncSession,
-    room_id: int,
+    course_id: int,
     user_id: int,
 ) -> bool:
     """Проверяет, назначен ли пользователь преподавателем комнаты"""
-    statement = select(RoomTeacher).where(
-        RoomTeacher.room_id == room_id,
-        RoomTeacher.user_id == user_id,
+    statement = select(CourseTeacher).where(
+        CourseTeacher.course_id == course_id,
+        CourseTeacher.user_id == user_id,
     )
     result = await session.execute(statement)
     return result.scalar_one_or_none() is not None
 
 
-async def get_room_or_404(
-    room_id: int,
+async def get_course_or_404(
+    course_id: int,
     session: AsyncSession = Depends(db.get_session),
-) -> Room:
-    """Возвращает комнату по `room_id` или выбрасывает 404"""
-    statement = select(Room).where(Room.id == room_id)
+) -> Course:
+    """Возвращает курс по `course_id` или выбрасывает 404"""
+    statement = select(Course).where(Course.id == course_id)
     result = await session.execute(statement)
-    room = result.scalar_one_or_none()
+    course = result.scalar_one_or_none()
 
-    if room is None:
+    if course is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Комната не найдена",
+            detail="Курс не найден",
         )
 
-    return room
+    return course
+
+
+async def get_course_by_slug_or_404(
+    slug: str,
+    session: AsyncSession = Depends(db.get_session),
+) -> Course:
+    """Возвращает курс по `slug` или выбрасывает 404"""
+    statement = select(Course).where(Course.slug == slug)
+    result = await session.execute(statement)
+    course = result.scalar_one_or_none()
+
+    if course is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Курс не найден",
+        )
+
+    return course
 
 
 async def get_lesson_or_404(
@@ -73,19 +91,35 @@ async def get_lesson_or_404(
     return lesson
 
 
-async def _get_room_of_lesson(
+async def _get_course_of_lesson(
     session: AsyncSession,
     lesson: Lesson,
-) -> Room:
-    """Возвращает комнату урока или выбрасывает 404"""
-    statement = select(Room).where(Room.id == lesson.room_id)
+) -> Course:
+    """Возвращает курс урока или выбрасывает 404"""
+    statement = select(Course).where(Course.id == lesson.course_id)
     result = await session.execute(statement)
-    room = result.scalar_one_or_none()
+    course = result.scalar_one_or_none()
 
-    if room is None:
+    if course is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Комната урока не найдена",
+            detail="Курс урока не найден",
         )
 
-    return room
+    return course
+
+
+async def get_invite_by_token_or_404(
+    token: str,
+    session: AsyncSession = Depends(db.get_session),
+) -> CourseInvite:
+    """Возвращает инвайт по токену или 404"""
+    statement = select(CourseInvite).where(CourseInvite.token == token)
+    result = await session.execute(statement)
+    invite = result.scalar_one_or_none()
+    if invite is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Приглашение не найдено",
+        )
+    return invite

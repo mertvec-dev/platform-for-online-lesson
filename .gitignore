@@ -4,7 +4,5 @@ __pycache__/
 *.pyc
 .env.local
 .zed
-backend/docs/ROADMAP.md
-backend/docs/DECISIONS.md
-backend/docs/PROPOSALS.md
 data/
+AGENTS.md

@@ -55,7 +55,6 @@ services:
       retries: 5
 
   # Mailpit для локальной разработки
-  # (чтобы не спамить в реальные ящики, а использовать поднятый локально почтовик)
   mailpit:
     image: axllent/mailpit:latest
     container_name: mailpit
@@ -68,3 +67,74 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+
+  # LiveKit — WebRTC SFU для видео/аудио занятий
+  livekit:
+    image: livekit/livekit-server:v1.8.4
+    container_name: livekit
+    ports:
+      - "7880:7880" # WebRTC / WebSocket
+      - "7881:7881" # HTTP API
+      - "50000-50100:50000-50100" # RTC (WebRTC media)
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+      LIVEKIT_PORT: "7880"
+      LIVEKIT_RTC_PORT_RANGE_START: "50000"
+      LIVEKIT_RTC_PORT_RANGE_END: "50100"
+      LIVEKIT_RTC_STUN_SERVERS: "stun:stun.l.google.com:19302"
+      LIVEKIT_REDIS_ADDRESS: "redis:6379"
+      LIVEKIT_REDIS_PASSWORD: "${REDIS_PASSWORD}"
+      LIVEKIT_CONFIG: |
+        webhook:
+          api_key: ${LIVEKIT_API_KEY}
+          urls:
+            - http://backend:8000/livekit/webhook
+    volumes:
+      - ./data/livekit:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:7880"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # MinIO — S3-совместимое хранилище для записи занятий (dev)
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web Console
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: ${LIVEKIT_S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${LIVEKIT_S3_SECRET_KEY:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./data/minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # LiveKit Egress — запись занятий (опционально, через env LIVEKIT_EGRESS_ENABLED)
+  # Раскомментировать когда будет S3 хранилище
+  # livekit-egress:
+  #   image: livekit/egress:v1.8.4
+  #   container_name: livekit-egress
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     EGRESS_CONFIG_FILE: /etc/egress.yaml
+  #   volumes:
+  #     - ./livekit-egress.yaml:/etc/egress.yaml
+  #   depends_on:
+  #     livekit:
+  #       condition: service_healthy

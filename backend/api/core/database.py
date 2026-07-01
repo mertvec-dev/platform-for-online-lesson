@@ -66,8 +66,18 @@ class Database:
         async with self._session_maker() as session:
             yield session
 
+    def session(self) -> AsyncSession:
+        """
+        Возвращает контекстный менеджер сессии.
+        """
+        if self._session_maker is None:
+            raise RuntimeError("База данных не инициализирована. Вызовите connect()")
+        return self._session_maker()
+
     async def create_tables(self) -> None:
-        """Создание таблиц (удобно для тестов или первого запуска)."""
+        """
+        Создание таблиц (удобно для тестов или первого запуска).
+        """
         if self._engine is None:
             raise RuntimeError("База данных не инициализирована")
 

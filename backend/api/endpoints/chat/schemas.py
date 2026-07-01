@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class CreateChatMessage(BaseModel):
-    room_id: int = Field(..., description="Идентификатор комнаты")
+    course_id: int = Field(..., description="Идентификатор курса")
     text: str = Field(
         ...,
         min_length=1,
@@ -26,7 +26,7 @@ class UpdateChatMessage(BaseModel):
 
 class ChatMessageRead(BaseModel):
     id: int
-    room_id: int
+    course_id: int
     author_id: int
     text: str
     created_at: datetime

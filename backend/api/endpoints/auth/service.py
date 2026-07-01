@@ -1,11 +1,14 @@
 """Сервисы аутентификации"""
 
+import logging
+
 from bcrypt import checkpw, gensalt, hashpw
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....models import User
+from ....models.users import Role
 from ...core import redis_client
 from ...core.config import settings
 from ...core.redis_keys import (
@@ -16,6 +19,9 @@ from ...core.redis_keys import (
 from .email_auth import request_verification, verify_code
 from .jwt_tokens import create_token, extract_user_id, verify_token
 from .schemas import TokenPair
+from .teacher_invites.service import teacher_invite_service
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -47,6 +53,7 @@ class AuthService:
         password: str,
         first_name: str,
         last_name: str,
+        teacher_invite_token: str | None,
         db_session: AsyncSession,
     ) -> None:
         """Сохраняет данные в Redis и отправляет код на почту."""
@@ -60,13 +67,15 @@ class AuthService:
             )
 
         hashed_password = hashpw(password.encode(), gensalt()).decode()
+        invite_part = teacher_invite_token or ""
         await redis_client.set_cache(
             registration_key(email),
-            f"{hashed_password}|{first_name}|{last_name}",
+            f"{hashed_password}|{first_name}|{last_name}|{invite_part}",
             expire=CODE_TTL,
         )
 
         await request_verification(email)
+        logger.info("Запрошена регистрация для email=%s", email)
 
     async def confirm_registration(
         self,
@@ -88,7 +97,11 @@ class AuthService:
                 detail="Данные регистрации истекли. Зарегистрируйтесь заново.",
             )
 
-        password_hash, first_name, last_name = reg_data.split("|")
+        parts = reg_data.split("|")
+        password_hash = parts[0]
+        first_name = parts[1]
+        last_name = parts[2]
+        teacher_invite_token = parts[3] if len(parts) > 3 and parts[3] else None
 
         existing = await db_session.execute(
             select(User).where(User.email == email)  # type: ignore[arg-type]
@@ -107,12 +120,23 @@ class AuthService:
             is_active=True,
         )
         db_session.add(user)
-        await db_session.commit()
-        assert user.id is not None
+        await db_session.flush()
+
+        if teacher_invite_token:
+            invite = await teacher_invite_service.validate_and_consume(
+                teacher_invite_token, db_session
+            )
+            user.role = Role.TEACHER
+            invite.used_count += 1
+            await db_session.commit()
+        else:
+            await db_session.commit()
 
         await redis_client.delete_cache(registration_key(email))
 
-        return await self._make_token_pair(user.id)
+        token_pair = await self._make_token_pair(user.id)
+        logger.info("Подтверждена регистрация: user_id=%d, email=%s", user.id, email)
+        return token_pair
 
     async def login(
         self,
@@ -124,16 +148,10 @@ class AuthService:
             select(User).where(User.email == email)  # type: ignore[arg-type]
         )
         user = result.scalar()
-        if not user:
+        if not user or not user.is_active:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Пользователь не найден",
-            )
-
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Аккаунт деактивирован",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Неверные учетные данные",
             )
 
         if not checkpw(password.encode(), user.password_hash.encode()):
@@ -142,8 +160,9 @@ class AuthService:
                 detail="Неверные учетные данные",
             )
 
-        assert user.id is not None
-        return await self._make_token_pair(user.id)
+        token_pair = await self._make_token_pair(user.id)
+        logger.info("Пользователь user_id=%d вошёл в систему", user.id)
+        return token_pair
 
     async def refresh_token(
         self,
@@ -186,8 +205,9 @@ class AuthService:
                 detail="Пользователь не найден",
             )
 
-        assert user.id is not None
-        return await self._make_token_pair(user.id)
+        token_pair = await self._make_token_pair(user.id)
+        logger.info("Refresh-токен обновлён для user_id=%d", user.id)
+        return token_pair
 
 
 auth_service = AuthService()

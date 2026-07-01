@@ -4,12 +4,12 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint
+from sqlalchemy import CheckConstraint, DateTime, String
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
+    from .courses import Course
     from .lessons_logs import LessonLog
-    from .rooms import Room
 
 
 class LessonStatus(str, Enum):
@@ -28,14 +28,13 @@ class Lesson(SQLModel, table=True):
         ),
     )
 
-    id: int | None = Field(
+    id: int = Field(
         default=None,
         primary_key=True,
-        sa_column_kwargs={"autoincrement": True},
     )
 
-    room_id: int = Field(
-        foreign_key="rooms.id",
+    course_id: int = Field(
+        foreign_key="courses.id",
         index=True,
         ondelete="CASCADE",
     )
@@ -43,11 +42,12 @@ class Lesson(SQLModel, table=True):
     title: str = Field(
         min_length=1,
         max_length=60,
+        sa_type=String(60),  # type: ignore[arg-type]
     )
-
     description: str = Field(
         min_length=10,
         max_length=300,
+        sa_type=String(300),  # type: ignore[arg-type]
     )
 
     max_participants: int = Field(
@@ -60,41 +60,36 @@ class Lesson(SQLModel, table=True):
         index=True,
     )
 
-    # На какое время запланировано занятие
     scheduled_at: datetime = Field(
         nullable=False,
         index=True,
+        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
     )
 
-    # Фактическое время начала занятия
     started_at: datetime | None = Field(
         default=None,
-        index=True,
+        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
     )
-
-    # Фактическое время завершения занятия
     ended_at: datetime | None = Field(
         default=None,
-        index=True,
+        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
     )
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
-        index=True,
+        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
     )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
-        index=True,
+        sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
         sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
     )
 
     # Отношения
-    room: "Room" = Relationship(
-        back_populates="lessons"
-    )  # Отношение многие к одному: много уроков --> одна комната
+    room: "Course" = Relationship(back_populates="lessons")
 
+    # FK в дочерней таблице: ondelete="CASCADE" → только passive_deletes
     logs: list["LessonLog"] = Relationship(
         back_populates="lesson",
-        cascade_delete=True,
         passive_deletes=True,
-    )  # Отношение один ко многим: один урок --> много логов
+    )

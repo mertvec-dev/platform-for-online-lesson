@@ -15,13 +15,12 @@ erDiagram
         datetime updated_at
     }
 
-    rooms {
+    courses {
         int id PK
         int created_by_user_id FK
         string slug UK
         string title
         string description
-        int max_participants
         boolean is_active
         datetime created_at
         datetime updated_at
@@ -29,9 +28,10 @@ erDiagram
 
     lessons {
         int id PK
-        int room_id FK
+        int course_id FK
         string title
         string description
+        int max_participants
         enum status
         datetime scheduled_at
         datetime started_at
@@ -40,32 +40,34 @@ erDiagram
         datetime updated_at
     }
 
-    lesson_logs {
+    lessons_logs {
         int id PK
         int lesson_id FK
         int user_id FK
+        string session_id
         datetime joined_at
         datetime left_at
         int duration_seconds
+        datetime webhook_received_at
         datetime created_at
         datetime updated_at
     }
 
     chat_messages {
         int id PK
-        int room_id FK
+        int course_id FK
         int author_id FK
         string text
         datetime created_at
-        datetime updated_at
     }
 
-    rooms_livekit_tokens {
+    courses_livekit_tokens {
         int id PK
-        int room_id FK
+        int course_id FK
         int user_id FK
         string participant_identity
         string token_jti UK
+        string session_id
         datetime joined_at
         datetime left_at
         datetime expires_at
@@ -73,9 +75,9 @@ erDiagram
         datetime updated_at
     }
 
-    room_invites {
+    course_invites {
         int id PK
-        int room_id FK
+        int course_id FK
         int created_by_user_id FK
         string token UK
         boolean is_active
@@ -86,9 +88,9 @@ erDiagram
         datetime updated_at
     }
 
-    room_memberships {
+    course_memberships {
         int id PK
-        int room_id FK
+        int course_id FK
         int user_id FK
         int invite_id FK
         boolean added_via_invite_link
@@ -98,37 +100,53 @@ erDiagram
         datetime updated_at
     }
 
-    room_teachers {
+    course_teachers {
         int id PK
-        int room_id FK
+        int course_id FK
         int user_id FK
         int added_by_user_id FK
         datetime created_at
         datetime updated_at
     }
 
-    users ||--o{ rooms : "создаёт"
-    rooms ||--o{ lessons : "содержит уроки"
-    lessons ||--o{ lesson_logs : "фиксирует посещения"
-    users ||--o{ lesson_logs : "посещает уроки"
+    teacher_invites {
+        int id PK
+        int created_by_user_id FK
+        string token UK
+        boolean is_active
+        int max_uses
+        int used_count
+        datetime expires_at
+        datetime created_at
+        datetime updated_at
+    }
 
-    rooms ||--o{ chat_messages : "содержит чат"
-    users ||--o{ chat_messages : "автор сообщений"
+    users ||--o{ courses : "создаёт"
+    courses ||--o{ lessons : "содержит"
+    lessons ||--o{ lessons_logs : "логи посещений"
+    users ||--o{ lessons_logs : "посещает"
 
-    rooms ||--o{ rooms_livekit_tokens : "имеет аудит токенов"
-    users ||--o{ rooms_livekit_tokens : "получает доступ"
+    courses ||--o{ chat_messages : "содержит чат"
+    users ||--o{ chat_messages : "автор"
 
-    rooms ||--o{ room_invites : "имеет invite-ссылки"
-    users ||--o{ room_invites : "создаёт invite-ссылки"
+    courses ||--o{ courses_livekit_tokens : "аудит токенов"
+    users ||--o{ courses_livekit_tokens : "получает доступ"
 
-    rooms ||--o{ room_memberships : "имеет участников"
-    users ||--o{ room_memberships : "состоит в комнате"
-    room_invites ||--o{ room_memberships : "используется при вступлении"
+    courses ||--o{ course_invites : "invite-ссылки"
+    users ||--o{ course_invites : "создаёт"
 
-    rooms ||--o{ room_teachers : "имеет преподавателей"
-    users ||--o{ room_teachers : "назначен преподавателем"
-    users ||--o{ room_teachers : "добавляет преподавателей"
+    courses ||--o{ course_memberships : "участники"
+    users ||--o{ course_memberships : "состоит"
+    course_invites ||--o{ course_memberships : "используется при вступлении"
+
+    courses ||--o{ course_teachers : "преподаватели"
+    users ||--o{ course_teachers : "преподаватель"
+    users ||--o{ course_teachers : "добавляет"
+
+    users ||--o{ teacher_invites : "создаёт приглашение преподавателя"
 ```
+
+---
 
 ## Пояснения по таблицам
 
@@ -136,210 +154,185 @@ erDiagram
 Основная таблица пользователей платформы.
 
 Хранит:
-- ФИО пользователя
-- email
-- хеш пароля
-- роль (`student`, `teacher`, `admin`)
-- состояние аккаунта (`is_active`, `deactivated_at`)
-- даты создания и обновления
+- Имя и фамилию
+- Email (уникальный)
+- Хеш пароля (bcrypt)
+- Роль (`student`, `teacher`, `admin`)
+- Флаг `is_active` (деактивация без удаления)
+- Даты создания и обновления
 
-Используется как центральная сущность почти во всех остальных таблицах.
+Индексы: `email` (unique), `role`, `is_active`.
 
 ---
 
-### `rooms`
-Таблица комнат.
+### `courses`
+Курс — контейнер, объединяющий уроки, участников, преподавателей, чат и приглашения.
 
-По текущей логике проекта `room` — это не конкретный урок во времени, а постоянная сущность-контейнер:
-- пространство для занятий
-- место, где хранятся уроки
-- участники комнаты
-- преподаватели комнаты
-- invite-ссылки
-- сообщения чата
-
-Поле `created_by_user_id` показывает, кто создал комнату.
+Поля:
+- `slug` — уникальный URL-идентификатор (генерируется автоматически из названия)
+- `title` — до 60 символов
+- `description` — 10–300 символов
+- `created_by_user_id` — создатель курса (FK → users, `ondelete=RESTRICT`)
+- `is_active` — деактивация без удаления
 
 ---
 
 ### `lessons`
-Таблица конкретных занятий внутри комнаты.
+Конкретное занятие внутри курса с жизненным циклом.
 
-`lesson` — это уже событие во времени, а не контейнер.
+Статусы:
+- `scheduled` — запланировано
+- `running` — идёт прямо сейчас
+- `ended` — завершено
 
-Хранит:
-- к какой комнате относится урок
-- название и описание
-- плановое время начала (`scheduled_at`)
-- фактическое время начала (`started_at`)
-- фактическое время завершения (`ended_at`)
-- статус урока (`scheduled`, `running`, `ended`)
+Поля:
+- `course_id` — FK → courses (`ondelete=CASCADE`)
+- `scheduled_at` — плановое время начала
+- `started_at` — фактическое время начала (устанавливается при старте)
+- `ended_at` — фактическое время завершения
+- `max_participants` — 1–50 (по умолчанию 50)
 
-Именно здесь живет жизненный цикл занятия.
+Check-constraint: `ended_at >= started_at` (если оба заданы).
 
 ---
 
-### `lesson_logs`
-Таблица логов посещения уроков.
+### `lessons_logs`
+Логи посещения уроков — самая важная таблица для аналитики и отчётности.
 
-Нужна для статистики, аналитики и отчетности.
+Заполняется автоматически через webhook-события LiveKit (не через прямое API).
 
-Позволяет хранить:
+Поля:
+- `lesson_id` — FK → lessons (`ondelete=CASCADE`)
+- `user_id` — FK → users (`ondelete=RESTRICT`)
+- `session_id` — идентификатор LiveKit-сессии (для матчинга join/leave)
+- `joined_at` — время входа
+- `left_at` — время выхода
+- `duration_seconds` — автовычисляемая длительность присутствия
+- `webhook_received_at` — время получения события сервером (для мониторинга задержек)
 
-- кто зашел на урок
-- когда зашел
-- когда вышел
-- сколько времени присутствовал
+Индексы:
+- Частичный уникальный индекс на `(lesson_id, user_id) WHERE left_at IS NULL` — один пользователь не может иметь две открытые сессии на одном уроке
+- `(lesson_id, user_id, joined_at)` — для быстрых отчётов
 
-Это одна из самых полезных таблиц для администрации школы, потому что по ней можно строить отчеты по посещаемости и активности.
+Check-constraints:
+- `left_at >= joined_at`
+- `duration_seconds >= 0`
+
 ---
 
 ### `chat_messages`
-Таблица сообщений чата внутри комнаты.
+Сообщения чата курса. Сохраняются в БД при отправке через WebSocket.
 
-Хранит:
-- комнату сообщения
-- автора сообщения
-- текст
-- даты создания и обновления
-
-Используется для текстовой коммуникации внутри учебной комнаты.
+Поля:
+- `course_id` — FK → courses (`ondelete=CASCADE`)
+- `author_id` — FK → users (`ondelete=RESTRICT`)
+- `text` — 1–500 символов
+- `created_at` — время отправки (индексировано)
 
 ---
 
-### `rooms_livekit_tokens`
-Таблица аудита токенов LiveKit.
+### `courses_livekit_tokens`
+Аудит выданных LiveKit-токенов. **Не хранит сами токены** — только метаданные: кто, в какой курс, когда получил доступ.
 
-Важно: здесь не хранится сам access token. Вместо этого хранятся только метаданные:
-- пользователь
-- комната
-- `participant_identity`
-- `token_jti`
-- время выдачи/использования
-- время выхода
-- срок действия токена
+Поля:
+- `participant_identity` — строковое представление `user_id`
+- `token_jti` — уникальный идентификатор JWT-токена
+- `session_id` — идентификатор LiveKit-сессии
+- `joined_at` / `left_at` — время использования токена
+- `expires_at` — срок действия токена
 
-Назначение таблицы:
-- аудит доступа к LiveKit
-- отладка
-- безопасность
-- аналитика по подключениям
+Check-constraints:
+- `left_at >= joined_at`
+- `expires_at >= created_at`
 
 ---
 
-### `room_invites`
-Таблица invite-ссылок для вступления в комнату.
+### `course_invites`
+Invite-ссылки для вступления в курс. Создаются преподавателем или админом.
 
-Хранит:
-- к какой комнате относится приглашение
-- кто его создал
-- токен приглашения
-- активно ли приглашение
-- лимит использований
-- сколько раз уже использовано
-- срок действия
+Поля:
+- `token` — уникальный токен приглашения
+- `is_active` — можно деактивировать без удаления
+- `max_uses` — лимит использований (null = безлимитно)
+- `used_count` — сколько раз уже использовано
+- `expires_at` — срок действия (null = бессрочно)
 
-Эта таблица нужна для логики вступления по ссылке.
-
----
-
-### `room_memberships`
-Таблица фактов участия пользователей в комнатах.
-
-Она не хранит invite-ссылку как строку, а фиксирует именно факт:
-- пользователь состоит в комнате
-- как он был добавлен
-- через какой invite он вошел
-- активен ли membership
-
-Это нормализованная связующая таблица между `users` и `rooms`.
+Check-constraints:
+- `max_uses > 0` (если задан)
+- `used_count >= 0`
+- `expires_at >= created_at` (если задан)
 
 ---
 
-### `room_teachers`
-Таблица назначений преподавателей в комнату.
+### `course_memberships`
+Связующая таблица: факт участия пользователя в курсе.
 
-Нужна, потому что одна комната может иметь:
-- одного создателя
-- нескольких преподавателей с доступом
-
-Хранит:
-- какую комнату дали преподавателю
-- какого преподавателя добавили
-- кто именно его добавил
-
-Таким образом:
-- `rooms.created_by_user_id` отвечает за создателя комнаты
-- `room_teachers` отвечает за дополнительных преподавателей
+Поля:
+- `course_id` + `user_id` — уникальная пара (UniqueConstraint)
+- `invite_id` — через какой инвайт вступил (`ondelete=SET NULL`)
+- `added_via_invite_link` — флаг способа добавления
+- `is_active` — активность участия
+- `joined_at` — дата вступления
 
 ---
 
-## Пояснения по связям
+### `course_teachers`
+Назначение преподавателей на курс (помимо создателя).
 
-### `users -> rooms`
-Один пользователь может создать много комнат.
+Поля:
+- `course_id` + `user_id` — уникальная пара (UniqueConstraint)
+- `added_by_user_id` — кто добавил преподавателя
 
-### `rooms -> lessons`
-Одна комната может содержать много уроков.
+---
 
-### `lessons -> lesson_logs`
-У одного урока может быть много записей посещения.
+### `teacher_invites`
+Токены для регистрации преподавателей. Администратор генерирует токен и передаёт преподавателю. При регистрации с валидным токеном пользователь получает роль `teacher`.
 
-### `users -> lesson_logs`
-Один пользователь может иметь много логов посещения разных уроков.
+Поля:
+- `token` — уникальный токен
+- `created_by_user_id` — создавший админ
+- `is_active`, `max_uses`, `used_count`, `expires_at` — аналогично `course_invites`
 
-### `rooms -> chat_messages`
-В одной комнате может быть много сообщений чата.
+---
 
-### `users -> chat_messages`
-Один пользователь может отправить много сообщений.
+## Связи
 
-### `rooms -> rooms_livekit_tokens`
-У одной комнаты может быть много аудиторских записей по токенам LiveKit.
-
-### `users -> rooms_livekit_tokens`
-Один пользователь может получать доступ к LiveKit многократно.
-
-### `rooms -> room_invites`
-Одна комната может иметь много invite-ссылок.
-
-### `users -> room_invites`
-Один пользователь может создать много invite-ссылок.
-
-### `rooms -> room_memberships`
-В одной комнате может быть много участников.
-
-### `users -> room_memberships`
-Один пользователь может состоять во многих комнатах.
-
-### `room_invites -> room_memberships`
-Одно приглашение может привести к нескольким вступлениям, если у него разрешено многократное использование.
-
-### `rooms -> room_teachers`
-У одной комнаты может быть много назначенных преподавателей.
-
-### `users -> room_teachers`
-Один пользователь может быть назначен преподавателем в нескольких комнатах.
+| Связь | Тип | Описание |
+|-------|-----|----------|
+| `users → courses` | 1:N | Пользователь может создать много курсов |
+| `courses → lessons` | 1:N | Курс содержит уроки |
+| `lessons → lessons_logs` | 1:N | Урок имеет много записей посещения |
+| `users → lessons_logs` | 1:N | Пользователь посещает много уроков |
+| `courses → chat_messages` | 1:N | Курс содержит сообщения чата |
+| `users → chat_messages` | 1:N | Пользователь — автор многих сообщений |
+| `courses → courses_livekit_tokens` | 1:N | Курс имеет много записей аудита токенов |
+| `users → courses_livekit_tokens` | 1:N | Пользователь получал доступ многократно |
+| `courses → course_invites` | 1:N | Курс имеет много invite-ссылок |
+| `users → course_invites` | 1:N | Пользователь создал много приглашений |
+| `courses → course_memberships` | 1:N | В курсе много участников |
+| `users → course_memberships` | 1:N | Пользователь состоит во многих курсах |
+| `course_invites → course_memberships` | 1:N | Приглашение приводит к вступлениям |
+| `courses → course_teachers` | 1:N | Курс имеет много преподавателей |
+| `users → course_teachers` | 1:N | Пользователь преподаёт на многих курсах |
+| `users → teacher_invites` | 1:N | Админ создаёт много токенов для преподавателей |
 
 ---
 
 ## Краткая логика предметной области
 
-Если очень коротко:
-- `room` — это учебное пространство
-- `lesson` — это конкретное занятие внутри пространства
-- `room_invite` — это способ вступления
-- `room_membership` — это факт участия пользователя в комнате
-- `room_teacher` — это назначение преподавателя в комнату
-- `lesson_log` — это факт посещения конкретного занятия
-- `rooms_livekit_tokens` — это аудит доступа к LiveKit
+- **`course`** — учебное пространство, контейнер
+- **`lesson`** — конкретное занятие внутри курса со своим временем и статусом
+- **`course_invite`** — способ вступления в курс по ссылке
+- **`course_membership`** — факт участия пользователя в курсе
+- **`course_teacher`** — назначение преподавателя (помимо создателя)
+- **`teacher_invite`** — токен для получения роли `teacher` при регистрации
+- **`lesson_log`** — факт посещения конкретного занятия (аналитика)
+- **`courses_livekit_tokens`** — аудит доступа к видео/аудио
 
-Такая схема уже подходит для MVP и покрывает:
-- комнаты
-- уроки
-- участников
-- преподавателей
-- приглашения
-- чат
-- статистику посещаемости
-- аудит live-подключений
+Схема покрывает потребности MVP:
+- Курсы и уроки
+- Участники и преподаватели
+- Приглашения
+- Чат в реальном времени
+- Статистика посещаемости
+- Аудит подключений к LiveKit

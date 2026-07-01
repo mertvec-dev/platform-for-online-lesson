@@ -251,7 +251,3 @@ python -m pytest backend/tests/ --cov=backend --cov-report=term
 ```
 
 В production-окружении тесты запускаются автоматически при старте приложения (pre-startup hook). При падении любого теста приложение не запустится.
-
-## Лицензия
-
-MIT

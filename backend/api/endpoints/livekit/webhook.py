@@ -130,6 +130,11 @@ async def livekit_webhook(
                 "Принудительный флаш буфера при завершении комнаты провален"
             )
 
+    elif event == "egress_ended":
+        egress_id = payload.get("egress_id", "")
+        file_path = payload.get("output", {}).get("location", "")
+        await _save_recording_url(egress_id, file_path)
+
     return Response(status_code=200)
 
 
@@ -140,3 +145,28 @@ def _parse_timestamp(raw: str | None) -> datetime:
         return datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except ValueError:
         return datetime.now(timezone.utc)
+
+
+async def _save_recording_url(egress_id: str, file_path: str) -> None:
+    """Сохраняет URL записи в урок по egress_id."""
+    if not egress_id or not file_path:
+        logger.warning("egress_ended: пустой egress_id или file_path")
+        return
+
+    try:
+        from sqlalchemy import update
+
+        from backend.api.core.database import db
+        from backend.models.lessons import Lesson
+
+        async with db.session() as session:
+            stmt = (
+                update(Lesson)
+                .where(Lesson.recording_url == egress_id)
+                .values(recording_url=file_path)
+            )
+            await session.execute(stmt)
+            await session.commit()
+            logger.info("Запись сохранена: egress_id=%s, path=%s", egress_id, file_path)
+    except Exception:
+        logger.exception("Ошибка сохранения recording_url для egress_id=%s", egress_id)

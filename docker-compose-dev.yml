@@ -124,17 +124,19 @@ services:
       timeout: 5s
       retries: 3
 
-  # LiveKit Egress — запись занятий (опционально, через env LIVEKIT_EGRESS_ENABLED)
-  # Раскомментировать когда будет S3 хранилище
-  # livekit-egress:
-  #   image: livekit/egress:v1.8.4
-  #   container_name: livekit-egress
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     EGRESS_CONFIG_FILE: /etc/egress.yaml
-  #   volumes:
-  #     - ./livekit-egress.yaml:/etc/egress.yaml
-  #   depends_on:
-  #     livekit:
-  #       condition: service_healthy
+  # LiveKit Egress — запись занятий
+  livekit-egress:
+    image: livekit/egress:v1.8.4
+    container_name: livekit-egress
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+      LIVEKIT_API_KEY: "${LIVEKIT_API_KEY}"
+      LIVEKIT_API_SECRET: "${LIVEKIT_API_SECRET}"
+    volumes:
+      - ./livekit-egress.yaml:/etc/egress.yaml:ro
+    depends_on:
+      livekit:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped

@@ -181,23 +181,33 @@ class LiveKitTokenResponse(BaseModel):
 async def get_livekit_token(
     lesson: Lesson = Depends(ensure_lesson_course_member_or_admin),  # type: ignore[arg-type]
     current_user: User = Depends(get_current_user),
+    preview: bool = False,
 ):
+    """
+    Возвращает LiveKit-токен.
+
+    preview=true — тамбур (камера/микрофон выключены, только смотреть).
+    preview=false (по умолчанию) — полный доступ.
+    """
     logger.info(
-        "GET /courses/{slug}/lessons/%d/token — запрос LiveKit-токена пользователем %d",
+        "GET /courses/{slug}/lessons/%d/token — запрос токена "
+        "пользователем %d (preview=%s)",
         lesson.id,
         current_user.id,
+        preview,
     )
     room = livekit.room_name(lesson.course_id, lesson.id)
     token = livekit.generate_token(
         room_name=room,
         participant_id=str(current_user.id),
         participant_name=f"{current_user.first_name} {current_user.last_name}",
+        can_publish=not preview,
     )
     return ApiResponse.ok(
         data=LiveKitTokenResponse(
             token=token,
             room_name=room,
-            ws_url=settings.LIVEKIT_WS_URL,
+            ws_url=settings.LIVEKIT_PUBLIC_WS_URL,
         ),
         message="Токен сгенерирован",
     )
@@ -215,3 +225,25 @@ async def get_lesson_logs(
     logger.info("GET /courses/{slug}/lessons/%d/logs — запрос логов", lesson.id)
     logs = await lesson_log_service.get_logs_for_lesson(lesson.id, session)
     return ApiResponse.ok(data=logs, message="Логи посещения")
+
+
+@lesson_router.get(
+    "/{slug}/lessons/{lesson_id}/recording",
+    summary="Получить ссылку на запись занятия",
+    response_model=ApiResponse[dict[str, str]],
+)
+async def get_recording_url(
+    lesson: Lesson = Depends(ensure_lesson_course_member_or_admin),  # type: ignore[arg-type]
+):
+    """Возвращает presigned URL на запись занятия (MP4 в S3/MinIO)."""
+    from ....core.egress_service import generate_presigned_url
+
+    logger.info("GET /courses/{slug}/lessons/%d/recording — запрос записи", lesson.id)
+    if not lesson.recording_url:
+        return ApiResponse.fail(message="Запись не найдена", status_code=404)
+
+    url = await generate_presigned_url(lesson.recording_url)
+    return ApiResponse.ok(
+        data={"url": url, "lesson_id": lesson.id},
+        message="Ссылка на запись",
+    )

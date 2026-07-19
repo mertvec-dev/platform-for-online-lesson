@@ -75,6 +75,12 @@ class Lesson(SQLModel, table=True):
         sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
     )
 
+    recording_url: str | None = Field(
+        default=None,
+        max_length=500,
+        sa_type=String(500),
+    )
+
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_type=DateTime(timezone=True),  # type: ignore[arg-type]

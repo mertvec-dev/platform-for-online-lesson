@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .....models import Lesson
 from .....models.lessons import LessonStatus
+from ....core.config import settings
+from ....core.egress_service import egress_service
 from ....core.pagination import MAX_PAGE_SIZE
 
 logger = logging.getLogger(__name__)
@@ -100,6 +102,17 @@ class LessonService:
         lesson.status = LessonStatus.RUNNING
         lesson.started_at = started_at or datetime.now(timezone.utc)
         await session.commit()
+
+        # Автозапуск записи
+        if settings.LIVEKIT_EGRESS_ENABLED:
+            from ....core.livekit_service import LiveKitService
+
+            room_name = LiveKitService().room_name(lesson.course_id, lesson.id)
+            egress_id = await egress_service.start_recording(room_name)
+            if egress_id:
+                lesson.recording_url = egress_id  # временно храним egress_id
+                await session.commit()
+
         logger.info("Урок начат: id=%d", lesson.id)
         return lesson
 
@@ -117,6 +130,11 @@ class LessonService:
 
         lesson.status = LessonStatus.ENDED
         lesson.ended_at = ended_at or datetime.now(timezone.utc)
+
+        # Остановка записи
+        if lesson.recording_url and len(lesson.recording_url) < 100:
+            await egress_service.stop_recording(lesson.recording_url)
+
         await session.commit()
         logger.info("Урок завершён: id=%d", lesson.id)
         return lesson

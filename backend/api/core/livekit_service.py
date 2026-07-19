@@ -6,8 +6,6 @@ from livekit import api
 
 from backend.api.core.config import settings
 
-TOKEN_TTL_SECONDS = 3600  # 1 час
-
 
 class LiveKitService:
     """Генерация LiveKit-токенов для подключения к комнате."""
@@ -17,8 +15,13 @@ class LiveKitService:
         room_name: str,
         participant_id: str,
         participant_name: str,
+        *,
+        can_publish: bool = True,
     ) -> str:
-        """Access Token для участника: VideoGrants с join + publish + subscribe."""
+        """Access Token для участника: VideoGrants с join + publish + subscribe.
+
+        can_publish=False — режим тамбура (только просмотр, без камеры/микрофона).
+        """
         token = (
             api.AccessToken(settings.LIVEKIT_API_KEY, settings.LIVEKIT_API_SECRET)
             .with_identity(participant_id)
@@ -27,11 +30,11 @@ class LiveKitService:
                 api.VideoGrants(
                     room_join=True,
                     room=room_name,
-                    can_publish=True,
-                    can_subscribe=True,
+                    can_publish=can_publish,
+                    can_subscribe=can_publish,
                 )
             )
-            .with_ttl(timedelta(seconds=TOKEN_TTL_SECONDS))
+            .with_ttl(timedelta(seconds=settings.LIVEKIT_TOKEN_TTL_SECONDS))
         )
         return token.to_jwt()
 

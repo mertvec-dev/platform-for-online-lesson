@@ -71,7 +71,34 @@ class Config(BaseSettings):
         default=DEFAULT_SECRET, description="LiveKit API Secret"
     )
     LIVEKIT_WS_URL: str = Field(
-        default="ws://livekit:7880", description="LiveKit WebSocket URL"
+        default="ws://livekit:7880",
+        description="LiveKit WebSocket URL (внутренний, для вебхуков)",
+    )
+    LIVEKIT_PUBLIC_WS_URL: str = Field(
+        default="ws://localhost:7880",
+        description="LiveKit WebSocket URL для фронтенда (браузера)",
+    )
+    LIVEKIT_TOKEN_TTL_SECONDS: int = Field(
+        default=3600, description="Время жизни LiveKit-токена в секундах"
+    )
+
+    # === Egress (запись занятий) ===
+    LIVEKIT_EGRESS_ENABLED: bool = Field(
+        default=False, description="Включить автоматическую запись занятий"
+    )
+    S3_ACCESS_KEY: str = Field(default="minioadmin", description="S3/MinIO Access Key")
+    S3_SECRET_KEY: str = Field(default="minioadmin", description="S3/MinIO Secret Key")
+    S3_BUCKET: str = Field(
+        default="recordings", description="S3/MinIO Bucket для записей"
+    )
+    S3_REGION: str = Field(default="us-east-1", description="S3 Region")
+    S3_ENDPOINT: str = Field(
+        default="http://minio:9000",
+        description="S3/MinIO Endpoint URL",
+    )
+    PRESIGNED_URL_TTL_HOURS: int = Field(
+        default=24,
+        description="Время жизни presigned URL для записей в часах",
     )
     WEBHOOK_SECRET: str = Field(
         default=DEFAULT_SECRET,

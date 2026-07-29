@@ -25,6 +25,7 @@ class LessonService:
         description: str,
         max_participants: int,
         scheduled_at: datetime,
+        duration_minutes: int,
         session: AsyncSession,
     ) -> Lesson:
         lesson = Lesson(
@@ -33,6 +34,7 @@ class LessonService:
             description=description,
             max_participants=max_participants,
             scheduled_at=scheduled_at,
+            duration_minutes=duration_minutes,
         )
         session.add(lesson)
         await session.commit()
@@ -72,6 +74,7 @@ class LessonService:
         description: str | None,
         max_participants: int | None,
         scheduled_at: datetime | None,
+        duration_minutes: int | None,
         session: AsyncSession,
     ) -> Lesson:
         if title is not None:
@@ -82,6 +85,8 @@ class LessonService:
             lesson.max_participants = max_participants
         if scheduled_at is not None:
             lesson.scheduled_at = scheduled_at
+        if duration_minutes is not None:
+            lesson.duration_minutes = duration_minutes
 
         await session.commit()
         logger.info("Обновлён урок: id=%d", lesson.id)
@@ -110,7 +115,7 @@ class LessonService:
             room_name = LiveKitService().room_name(lesson.course_id, lesson.id)
             egress_id = await egress_service.start_recording(room_name)
             if egress_id:
-                lesson.recording_url = egress_id  # временно храним egress_id
+                lesson.egress_id = egress_id
                 await session.commit()
 
         logger.info("Урок начат: id=%d", lesson.id)
@@ -132,8 +137,8 @@ class LessonService:
         lesson.ended_at = ended_at or datetime.now(timezone.utc)
 
         # Остановка записи
-        if lesson.recording_url and len(lesson.recording_url) < 100:
-            await egress_service.stop_recording(lesson.recording_url)
+        if lesson.egress_id:
+            await egress_service.stop_recording(lesson.egress_id)
 
         await session.commit()
         logger.info("Урок завершён: id=%d", lesson.id)

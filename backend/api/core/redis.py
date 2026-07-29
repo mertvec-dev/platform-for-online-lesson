@@ -1,11 +1,14 @@
 """Конфигурация Redis"""
 
+import logging
 from typing import Any, Optional, cast
 
 import redis.asyncio as redis
 from redis.asyncio.client import PubSub
 
 from .config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class RedisClient:
@@ -23,11 +26,13 @@ class RedisClient:
             password=settings.REDIS_PASSWORD,
             decode_responses=True,
         )
+        logger.info("Redis подключен: %s:%s", settings.REDIS_HOST, settings.REDIS_PORT)
 
     async def close(self) -> None:
         if self._client:
             await self._client.close()
             self._client = None
+            logger.info("Redis отключен")
 
     def get_client(self) -> redis.Redis:
         if not self._client:

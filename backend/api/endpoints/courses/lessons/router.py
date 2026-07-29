@@ -54,6 +54,7 @@ async def create_lesson(
         description=body.description,
         max_participants=body.max_participants,
         scheduled_at=body.scheduled_at,
+        duration_minutes=body.duration_minutes,
         session=session,
     )
     return ApiResponse.ok(
@@ -110,6 +111,7 @@ async def update_lesson(
         description=body.description,
         max_participants=body.max_participants,
         scheduled_at=body.scheduled_at,
+        duration_minutes=body.duration_minutes,
         session=session,
     )
     return ApiResponse.ok(data=lesson, message="Урок обновлён")

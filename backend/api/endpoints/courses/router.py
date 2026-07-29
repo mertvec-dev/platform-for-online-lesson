@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....models import Course, User
 from ...core import db
+from ...core.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from ...core.response import ApiResponse
 from ..auth.dependencies import get_current_user
 from .dependencies import (
@@ -70,11 +71,16 @@ async def create_course(
 async def get_my_courses(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(db.get_session),
+    limit: int = DEFAULT_PAGE_SIZE,
+    offset: int = 0,
 ):
     logger.info(
-        "GET /courses/my — запрос списка курсов пользователя %d", current_user.id
+        "GET /courses/my — запрос списка курсов пользователя %d (limit=%d, offset=%d)",
+        current_user.id, limit, offset,
     )
-    courses = await course_service.list_user_courses(current_user.id, session)
+    courses = await course_service.list_user_courses(
+        current_user.id, session, limit=min(limit, MAX_PAGE_SIZE), offset=offset,
+    )
 
     return ApiResponse.ok(
         data=courses,

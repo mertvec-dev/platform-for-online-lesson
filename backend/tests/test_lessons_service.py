@@ -41,10 +41,12 @@ async def test_create_lesson(db_session: AsyncSession):
         description="Описание урока один",
         max_participants=30,
         scheduled_at=datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        duration_minutes=90,
         session=db_session,
     )
     assert lesson.status == LessonStatus.SCHEDULED
     assert lesson.title == "Урок 1"
+    assert lesson.duration_minutes == 90
 
 
 @pytest.mark.asyncio
@@ -58,6 +60,7 @@ async def test_start_lesson(db_session: AsyncSession):
         "Описание урока один",
         30,
         datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        60,
         db_session,
     )
     started = await service.start_lesson(lesson, None, db_session)
@@ -76,6 +79,7 @@ async def test_end_lesson(db_session: AsyncSession):
         "Описание урока один",
         30,
         datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        60,
         db_session,
     )
     await service.start_lesson(lesson, None, db_session)
@@ -95,6 +99,7 @@ async def test_cannot_start_ended_lesson(db_session: AsyncSession):
         "Описание урока один",
         30,
         datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        60,
         db_session,
     )
     await service.start_lesson(lesson, None, db_session)
@@ -118,11 +123,13 @@ async def test_update_lesson_changes_title(db_session: AsyncSession):
         "Описание урока один",
         30,
         datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        60,
         db_session,
     )
     updated = await service.update_lesson(
         lesson,
         "Новый заголовок",
+        None,
         None,
         None,
         None,
@@ -142,6 +149,7 @@ async def test_delete_lesson(db_session: AsyncSession):
         "Описание урока один",
         30,
         datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        60,
         db_session,
     )
     await service.delete_lesson(lesson, db_session)

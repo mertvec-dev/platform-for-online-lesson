@@ -66,6 +66,13 @@ class Lesson(SQLModel, table=True):
         sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
     )
 
+    duration_minutes: int = Field(
+        default=60,
+        ge=1,
+        le=480,
+        description="Плановая длительность урока в минутах",
+    )
+
     started_at: datetime | None = Field(
         default=None,
         sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
@@ -79,6 +86,12 @@ class Lesson(SQLModel, table=True):
         default=None,
         max_length=500,
         sa_type=String(500),
+    )
+
+    egress_id: str | None = Field(
+        default=None,
+        max_length=100,
+        sa_type=String(100),
     )
 
     created_at: datetime = Field(

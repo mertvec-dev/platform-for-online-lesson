@@ -1,10 +1,13 @@
 """Сервис LiveKit: генерация токенов, имена комнат."""
 
+import logging
 from datetime import timedelta
 
 from livekit import api
 
 from backend.api.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class LiveKitService:
@@ -36,7 +39,12 @@ class LiveKitService:
             )
             .with_ttl(timedelta(seconds=settings.LIVEKIT_TOKEN_TTL_SECONDS))
         )
-        return token.to_jwt()
+        jwt_token = token.to_jwt()
+        logger.info(
+            "LiveKit-токен выдан: room=%s, participant=%s, publish=%s",
+            room_name, participant_id, can_publish,
+        )
+        return jwt_token
 
     def room_name(self, course_id: int, lesson_id: int) -> str:
         return f"course_{course_id}_lesson_{lesson_id}"

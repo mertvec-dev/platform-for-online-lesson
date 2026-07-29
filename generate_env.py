@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Генератор .env и livekit-egress.yaml для платформы онлайн-занятий.
 
@@ -12,7 +11,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 ENV_FILE = ROOT / ".env"
-EGRESS_TEMPLATE = ROOT / "livekit-egress.yaml.template"
 EGRESS_CONFIG = ROOT / "livekit-egress.yaml"
 MIN_PASSWORD_LENGTH = 12
 
@@ -21,36 +19,40 @@ def generate_secret() -> str:
     return secrets.token_hex(32)
 
 
-def _read_env_value(lines: list[str], key: str) -> str | None:
+def _read_env_value(lines: list[str], key: str) -> str:
     for line in lines:
         if line.startswith(f"{key}="):
             return line.split("=", 1)[1].strip()
-    return None
+    return ""
 
 
-def _generate_egress_config(env_lines: list[str]) -> None:
-    """Генерирует livekit-egress.yaml из шаблона, подставляя значения из .env."""
-    if not EGRESS_TEMPLATE.exists():
-        print("  ⚠️  livekit-egress.yaml.template не найден — пропускаю Egress-конфиг")
-        return
-
-    template = EGRESS_TEMPLATE.read_text(encoding="utf-8")
-
-    replacements = {
-        "LIVEKIT_API_KEY_PLACEHOLDER": _read_env_value(env_lines, "LIVEKIT_API_KEY") or "",
-        "LIVEKIT_API_SECRET_PLACEHOLDER": _read_env_value(env_lines, "LIVEKIT_API_SECRET") or "",
-        "REDIS_PASSWORD_PLACEHOLDER": _read_env_value(env_lines, "REDIS_PASSWORD") or "",
-        "S3_ACCESS_KEY_PLACEHOLDER": _read_env_value(env_lines, "LIVEKIT_S3_ACCESS_KEY") or "minioadmin",
-        "S3_SECRET_KEY_PLACEHOLDER": _read_env_value(env_lines, "LIVEKIT_S3_SECRET_KEY") or "minioadmin",
-        "S3_BUCKET_PLACEHOLDER": _read_env_value(env_lines, "LIVEKIT_S3_BUCKET") or "recordings",
-        "S3_REGION_PLACEHOLDER": _read_env_value(env_lines, "LIVEKIT_S3_REGION") or "us-east-1",
-        "S3_ENDPOINT_PLACEHOLDER": _read_env_value(env_lines, "LIVEKIT_S3_ENDPOINT") or "http://minio:9000",
-    }
-
-    for placeholder, value in replacements.items():
-        template = template.replace(placeholder, value)
-
-    EGRESS_CONFIG.write_text(template, encoding="utf-8")
+def _write_egress_config(
+    api_key: str,
+    api_secret: str,
+    redis_pass: str,
+    s3_access: str,
+    s3_secret: str,
+    s3_bucket: str,
+    s3_region: str,
+    s3_endpoint: str,
+) -> None:
+    content = (
+        f"# LiveKit Egress конфигурация — сгенерирован автоматически\n\n"
+        f"api_port: 7881\n"
+        f"api_key: {api_key}\n"
+        f"api_secret: {api_secret}\n"
+        f"ws_url: ws://livekit:7880\n\n"
+        f"s3:\n"
+        f"  access_key: {s3_access}\n"
+        f"  secret: {s3_secret}\n"
+        f"  bucket: {s3_bucket}\n"
+        f"  region: {s3_region}\n"
+        f"  endpoint: {s3_endpoint}\n\n"
+        f"redis:\n"
+        f"  address: redis:6379\n"
+        f"  password: {redis_pass}\n"
+    )
+    EGRESS_CONFIG.write_text(content, encoding="utf-8")
     print("  + livekit-egress.yaml сгенерирован")
 
 
@@ -77,15 +79,15 @@ def main() -> None:
                 else:
                     print(f"  • {var} уже задан, пропускаю")
 
-        for key, label in [("POSTGRES_PASSWORD", "POSTGRES_PASSWORD"), ("DEFAULT_ADMIN_PASSWORD", "DEFAULT_ADMIN_PASSWORD")]:
+        for key in ["POSTGRES_PASSWORD", "DEFAULT_ADMIN_PASSWORD"]:
             if f"{key}=" not in existing:
-                print(f"  ⚠️  {label} не задан!")
+                print(f"  ⚠️  {key} не задан!")
             else:
-                val = _read_env_value(lines, key) or ""
+                val = _read_env_value(lines, key)
                 if len(val) < MIN_PASSWORD_LENGTH:
-                    print(f"  ⚠️  {label} слишком короткий ({len(val)} < {MIN_PASSWORD_LENGTH})")
+                    print(f"  ⚠️  {key} слишком короткий ({len(val)} < {MIN_PASSWORD_LENGTH})")
                 else:
-                    print(f"  • {label} уже задан")
+                    print(f"  • {key} уже задан")
 
         if "DEFAULT_ADMIN_EMAIL=" not in existing:
             email = input("Почта дефолтного админа [admin@example.com]: ").strip()
@@ -93,12 +95,28 @@ def main() -> None:
             print("  + Установлен DEFAULT_ADMIN_EMAIL")
 
         ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        _generate_egress_config(lines)
+
+        _write_egress_config(
+            api_key=_read_env_value(lines, "LIVEKIT_API_KEY"),
+            api_secret=_read_env_value(lines, "LIVEKIT_API_SECRET"),
+            redis_pass=_read_env_value(lines, "REDIS_PASSWORD"),
+            s3_access=_read_env_value(lines, "LIVEKIT_S3_ACCESS_KEY") or "minioadmin",
+            s3_secret=_read_env_value(lines, "LIVEKIT_S3_SECRET_KEY") or "minioadmin",
+            s3_bucket=_read_env_value(lines, "LIVEKIT_S3_BUCKET") or "recordings",
+            s3_region=_read_env_value(lines, "LIVEKIT_S3_REGION") or "us-east-1",
+            s3_endpoint=_read_env_value(lines, "LIVEKIT_S3_ENDPOINT") or "http://minio:9000",
+        )
         print("Готово.")
         return
 
     # --- Новый .env ---
     print(f"Создаю {ENV_FILE}...\n")
+
+    print("Выберите окружение:")
+    print("  [1] development")
+    print("  [2] production")
+    env_choice = input("Ваш выбор [2]: ").strip() or "2"
+    is_dev = env_choice == "1"
 
     while True:
         pg_pass = input("Пароль для PostgreSQL (мин. 12 символов): ").strip()
@@ -124,43 +142,77 @@ def main() -> None:
             break
         print(f"Ошибка: минимум {MIN_PASSWORD_LENGTH} символов")
 
-    domain = input("Домен сайта (например, edu.example.com): ").strip()
-    if not domain:
-        print("Ошибка: домен не может быть пустым")
-        sys.exit(1)
-
     lk_api_key = generate_secret()
     lk_api_secret = generate_secret()
 
-    content = f"""\
-ENVIRONMENT=production
-DOMAIN_NAME={domain}
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD={pg_pass}
-POSTGRES_DB=db
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_PASSWORD={redis_pass}
-JWT_SECRET_KEY={generate_secret()}
-WEBHOOK_SECRET={generate_secret()}
-ACCESS_JWT_TOKEN_EXPIRES_IN_MINUTES=30
-REFRESH_JWT_TOKEN_EXPIRES_IN_DAYS=7
-DEFAULT_ADMIN_EMAIL={admin_email}
-DEFAULT_ADMIN_PASSWORD={admin_pass}
-LIVEKIT_API_KEY={lk_api_key}
-LIVEKIT_API_SECRET={lk_api_secret}
-LIVEKIT_WS_URL=ws://livekit:7880
-LIVEKIT_PUBLIC_WS_URL=wss://{domain}:7881
-LIVEKIT_EGRESS_ENABLED=true
-LIVEKIT_S3_ACCESS_KEY=minioadmin
-LIVEKIT_S3_SECRET_KEY=minioadmin
-LIVEKIT_S3_BUCKET=recordings
-LIVEKIT_S3_REGION=us-east-1
-LIVEKIT_S3_ENDPOINT=http://minio:9000
-"""
+    if is_dev:
+        env_type = "development"
+        smtp_host = "mailpit"
+        smtp_port = "1025"
+        smtp_password = "any"
+        smtp_from = "noreply@example.com"
+        lk_public_ws = "ws://localhost:7880"
+        domain_line = ""
+    else:
+        env_type = "production"
+        domain = input("Домен сайта (например, edu.example.com): ").strip()
+        if not domain:
+            print("Ошибка: домен не может быть пустым")
+            sys.exit(1)
+        smtp_host = input("SMTP-хост [smtp.yandex.ru]: ").strip() or "smtp.yandex.ru"
+        smtp_port = input("SMTP-порт [465]: ").strip() or "465"
+        smtp_from = input(f"SMTP-адрес отправителя [noreply@{domain}]: ").strip() or f"noreply@{domain}"
+        smtp_password = input("SMTP-пароль: ").strip()
+        if not smtp_password:
+            print("⚠️  SMTP-пароль не задан. Почта не будет работать.")
+        lk_public_ws = f"wss://{domain}:7881"
+        domain_line = f"DOMAIN_NAME={domain}\n"
+
+    content = (
+        f"ENVIRONMENT={env_type}\n"
+        f"{domain_line}"
+        f"POSTGRES_USER=postgres\n"
+        f"POSTGRES_PASSWORD={pg_pass}\n"
+        f"POSTGRES_DB=db\n"
+        f"REDIS_HOST=redis\n"
+        f"REDIS_PORT=6379\n"
+        f"REDIS_PASSWORD={redis_pass}\n"
+        f"JWT_SECRET_KEY={generate_secret()}\n"
+        f"WEBHOOK_SECRET={generate_secret()}\n"
+        f"ACCESS_JWT_TOKEN_EXPIRES_IN_MINUTES=30\n"
+        f"REFRESH_JWT_TOKEN_EXPIRES_IN_DAYS=7\n"
+        f"DEFAULT_ADMIN_EMAIL={admin_email}\n"
+        f"DEFAULT_ADMIN_PASSWORD={admin_pass}\n"
+        f"SMTP_HOST={smtp_host}\n"
+        f"SMTP_PORT={smtp_port}\n"
+        f"SMTP_FROM_EMAIL={smtp_from}\n"
+        f"SMTP_PASSWORD={smtp_password}\n"
+        f"LIVEKIT_API_KEY={lk_api_key}\n"
+        f"LIVEKIT_API_SECRET={lk_api_secret}\n"
+        f"LIVEKIT_WS_URL=ws://livekit:7880\n"
+        f"LIVEKIT_PUBLIC_WS_URL={lk_public_ws}\n"
+        f"ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173\n"
+        f"LIVEKIT_EGRESS_ENABLED=true\n"
+        f"LIVEKIT_S3_ACCESS_KEY=minioadmin\n"
+        f"LIVEKIT_S3_SECRET_KEY=minioadmin\n"
+        f"LIVEKIT_S3_BUCKET=recordings\n"
+        f"LIVEKIT_S3_REGION=us-east-1\n"
+        f"LIVEKIT_S3_ENDPOINT=http://minio:9000\n"
+    )
 
     ENV_FILE.write_text(content, encoding="utf-8")
-    _generate_egress_config(content.splitlines())
+
+    if not is_dev:
+        _write_egress_config(
+            api_key=lk_api_key,
+            api_secret=lk_api_secret,
+            redis_pass=redis_pass,
+            s3_access="minioadmin",
+            s3_secret="minioadmin",
+            s3_bucket="recordings",
+            s3_region="us-east-1",
+            s3_endpoint="http://minio:9000",
+        )
     print(f"\nФайл {ENV_FILE} создан.")
 
 

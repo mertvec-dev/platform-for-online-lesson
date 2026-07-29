@@ -5,13 +5,15 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select as sa_select
 
+from backend.api.core.config import settings
 from backend.api.core.database import Database
 from backend.api.core.redis import redis_client
 from backend.api.core.redis_keys import WEBHOOK_BUFFER, WEBHOOK_FLUSH_INTERVAL
+from backend.models.lessons import Lesson, LessonStatus
 from backend.models.lessons_logs import LessonLog
 
 logger = logging.getLogger(__name__)
@@ -62,6 +64,10 @@ class WebhookBufferWorker:
                 await self._flush()
             except Exception:
                 logger.exception("Периодический флаш буфера провален")
+            try:
+                await self._cleanup_stale_lessons()
+            except Exception:
+                logger.exception("Зачистка зависших уроков провалена")
 
     async def _flush(self) -> None:
         if self._db is None:
@@ -121,6 +127,47 @@ class WebhookBufferWorker:
                         log.webhook_received_at = datetime.now(timezone.utc)
 
             await session.commit()
+
+    async def _cleanup_stale_lessons(self) -> None:
+        """Принудительно завершает уроки, висящие в RUNNING дольше планового времени."""
+        if self._db is None:
+            return
+
+        buffer = timedelta(minutes=settings.LESSON_MAX_DURATION_MINUTES)
+
+        async with self._db.session() as session:
+            stmt = sa_select(Lesson).where(
+                Lesson.status == LessonStatus.RUNNING,
+                Lesson.started_at.is_not(None),
+            )
+            result = await session.execute(stmt)
+            running_lessons = result.scalars().all()
+
+            now = datetime.now(timezone.utc)
+            stale = [
+                lesson
+                for lesson in running_lessons
+                if lesson.scheduled_at + timedelta(minutes=lesson.duration_minutes) + buffer < now
+            ]
+
+            if not stale:
+                return
+
+            from backend.api.core.egress_service import egress_service
+
+            for lesson in stale:
+                logger.warning(
+                    "Урок %d висит в RUNNING с %s (план: %s + %d мин), принудительно завершаем",
+                    lesson.id, lesson.started_at, lesson.scheduled_at, lesson.duration_minutes,
+                )
+                if lesson.egress_id:
+                    await egress_service.stop_recording(lesson.egress_id)
+                    # egress_id не сбрасываем — egress_ended вебхук использует его
+                lesson.status = LessonStatus.ENDED
+                lesson.ended_at = now
+
+            await session.commit()
+            logger.info("Зачищено %d зависших уроков", len(stale))
 
 
 async def _find_open_log(session, lv: dict) -> LessonLog | None:

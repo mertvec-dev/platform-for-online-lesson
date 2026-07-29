@@ -1,5 +1,6 @@
 """Сервисы аутентификации"""
 
+import json
 import logging
 
 from bcrypt import checkpw, gensalt, hashpw
@@ -67,10 +68,15 @@ class AuthService:
             )
 
         hashed_password = hashpw(password.encode(), gensalt()).decode()
-        invite_part = teacher_invite_token or ""
+        reg_payload = json.dumps({
+            "password_hash": hashed_password,
+            "first_name": first_name,
+            "last_name": last_name,
+            "teacher_invite_token": teacher_invite_token or None,
+        })
         await redis_client.set_cache(
             registration_key(email),
-            f"{hashed_password}|{first_name}|{last_name}|{invite_part}",
+            reg_payload,
             expire=CODE_TTL,
         )
 
@@ -90,18 +96,18 @@ class AuthService:
                 detail="Неверный или истёкший код подтверждения",
             )
 
-        reg_data = await redis_client.get_cache(registration_key(email))
-        if reg_data is None:
+        raw = await redis_client.get_cache(registration_key(email))
+        if raw is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Данные регистрации истекли. Зарегистрируйтесь заново.",
             )
 
-        parts = reg_data.split("|")
-        password_hash = parts[0]
-        first_name = parts[1]
-        last_name = parts[2]
-        teacher_invite_token = parts[3] if len(parts) > 3 and parts[3] else None
+        data = json.loads(raw)
+        password_hash = data["password_hash"]
+        first_name = data["first_name"]
+        last_name = data["last_name"]
+        teacher_invite_token = data.get("teacher_invite_token")
 
         existing = await db_session.execute(
             select(User).where(User.email == email)  # type: ignore[arg-type]

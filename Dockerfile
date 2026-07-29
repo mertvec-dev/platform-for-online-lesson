@@ -1,18 +1,22 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS builder
 
-WORKDIR /app
-
-# Системные зависимости для сборки asyncpg и bcrypt
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --no-cache --prefix=/install -r requirements.txt
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY --from=builder /install /usr/local
 
 COPY backend/ backend/
 
-# Непривилегированный пользователь
 RUN useradd --create-home appuser && chown -R appuser:appuser /app
 USER appuser
 

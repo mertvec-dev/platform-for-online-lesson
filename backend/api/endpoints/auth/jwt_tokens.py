@@ -1,5 +1,6 @@
 """JWT-токен утилиты"""
 
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -9,6 +10,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
 from ...core.config import settings
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer(auto_error=True)
 
@@ -42,7 +45,8 @@ def verify_token(token: str) -> dict[str, Any] | None:
             key=settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
         )
-    except JWTError:
+    except JWTError as exc:
+        logger.warning("JWT-верификация провалена: %s", exc)
         return None
 
 

@@ -19,7 +19,7 @@ services:
       - .env
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   certbot:
@@ -49,6 +49,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
 
   database:
@@ -110,7 +116,13 @@ services:
       redis:
         condition: service_healthy
       backend:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:7880"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
   # LiveKit Egress — запись занятий

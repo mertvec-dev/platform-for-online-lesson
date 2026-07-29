@@ -1,5 +1,6 @@
 """Email-верификация: генерация кода, отправка, проверка"""
 
+import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -21,6 +22,8 @@ from ...core.redis_keys import (
     ratelimit_send_key,
     verify_code_key,
 )
+
+logger = logging.getLogger(__name__)
 
 _templates_dir = Path(__file__).resolve().parent.parent.parent / "templates" / "email"
 _jinja = Environment(loader=FileSystemLoader(str(_templates_dir)))
@@ -102,3 +105,4 @@ async def send_verification_email(to_email: str, code: str) -> None:
         use_tls=is_prod,
         start_tls=False,
     )
+    logger.info("Код подтверждения отправлен на %s", to_email)

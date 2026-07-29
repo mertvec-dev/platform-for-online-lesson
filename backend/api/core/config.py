@@ -105,7 +105,11 @@ class Config(BaseSettings):
         description="Секрет для LiveKit-webhook (проверка SHA-256 подписи)",
     )
     WEBHOOK_FLUSH_INTERVAL_SECONDS: int = Field(
-        default=5, description="Интервал (сек) сброса webhook-буфера в БД"
+        default=300, description="Интервал (сек) сброса webhook-буфера в БД"
+    )
+    LESSON_MAX_DURATION_MINUTES: int = Field(
+        default=10,
+        description="Буфер (мин) сверх плановой длительности для авто-завершения зависших уроков",
     )
 
     # === SMTP (почта) ===
@@ -160,10 +164,10 @@ class Config(BaseSettings):
     )
 
     # === CORS ===
-    # ALLOWED_ORIGINS: list[str] = Field(
-    #     default=["http://localhost:443"],
-    #     description="Список разрешенных источников (CORS)",
-    # )
+    ALLOWED_ORIGINS: str = Field(
+        default="http://localhost:3000,http://localhost:5173",
+        description="Разрешённые CORS-источники через запятую. Для dev — адреса фронтенда",
+    )
 
     @property
     def ACCESS_JWT_TOKEN_EXPIRES_IN_SECONDS(self) -> int:
@@ -212,7 +216,7 @@ class Config(BaseSettings):
         for name, value in secret_fields.items():
             if value == DEFAULT_SECRET:
                 errors.append(f"{name} — не переопределён в .env (остался дефолтным)")
-            elif name == "POSTGRES_PASSWORD" and len(value) < MIN_PASSWORD_LENGTH:
+            elif name in ("POSTGRES_PASSWORD", "REDIS_PASSWORD", "SMTP_PASSWORD") and len(value) < MIN_PASSWORD_LENGTH:
                 errors.append(
                     f"{name} — слишком короткий "
                     f"({len(value)} < {MIN_PASSWORD_LENGTH} символов)"

@@ -1,5 +1,6 @@
 """В этом файле создается асинхронный движок для БД"""
 
+import logging
 from collections.abc import AsyncGenerator
 from typing import Optional
 
@@ -12,6 +13,8 @@ from sqlalchemy.ext.asyncio import (
 from sqlmodel import SQLModel
 
 from .config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class Database:
@@ -47,6 +50,8 @@ class Database:
             expire_on_commit=False,
         )
 
+        logger.info("БД подключена: %s", self.database_url.split("@")[-1])
+
     async def close(self) -> None:
         """
         Корректно закрывает пул соединений.
@@ -55,6 +60,7 @@ class Database:
             await self._engine.dispose()
             self._engine = None
             self._session_maker = None
+            logger.info("БД отключена")
 
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """

@@ -32,6 +32,12 @@ class CreateLesson(BaseModel):
         ...,
         description="Плановое время начала урока",
     )
+    duration_minutes: int = Field(
+        default=60,
+        ge=1,
+        le=480,
+        description="Плановая длительность урока в минутах",
+    )
 
 
 class UpdateLesson(BaseModel):
@@ -39,6 +45,7 @@ class UpdateLesson(BaseModel):
     description: str | None = Field(default=None, min_length=10, max_length=300)
     max_participants: int | None = Field(default=None, ge=1, le=50)
     scheduled_at: datetime | None = Field(default=None)
+    duration_minutes: int | None = Field(default=None, ge=1, le=480)
 
 
 class UpdateStatus(BaseModel):
@@ -61,6 +68,7 @@ class LessonRead(BaseModel):
     max_participants: int
     status: LessonStatus
     scheduled_at: datetime
+    duration_minutes: int
     started_at: datetime | None
     ended_at: datetime | None
     created_at: datetime
@@ -73,5 +81,6 @@ class LessonListItem(BaseModel):
     title: str
     status: LessonStatus
     scheduled_at: datetime
+    duration_minutes: int
     started_at: datetime | None
     ended_at: datetime | None

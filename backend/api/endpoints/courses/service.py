@@ -89,12 +89,16 @@ class CoursesService:
         self,
         user_id: int,
         session: AsyncSession,
+        limit: int = 20,
+        offset: int = 0,
     ) -> list[Course]:
         stmt = (
             select(Course)
             .join(CourseMembership, CourseMembership.course_id == Course.id)  # type: ignore[arg-type]
             .where(CourseMembership.user_id == user_id)  # type: ignore[arg-type]
             .order_by(Course.created_at.desc())  # type: ignore
+            .limit(limit)
+            .offset(offset)
         )
 
         result = await session.execute(stmt)

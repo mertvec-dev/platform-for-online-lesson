@@ -1,5 +1,9 @@
 """Файл для создания FastAPI приложения"""
 
+import contextvars
+import logging
+import uuid
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,8 +31,36 @@ from .lifespan import app_lifespan
 
 MAX_REQUEST_BODY_SIZE = 1_048_576  # 1 MB
 
+request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "request_id", default="-"
+)
+
+
+class RequestIDFilter(logging.Filter):
+    """Внедряет request_id из ContextVar в каждую запись лога."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = request_id_var.get()
+        return True
+
+
+LOG_FORMAT = "%(asctime)s | %(levelname)-7s | %(request_id)-12s | %(name)-35s | %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
 
 def create_app() -> FastAPI:
+    logging.basicConfig(
+        level=logging.DEBUG if settings.ENVIRONMENT == "development" else logging.INFO,
+        format=LOG_FORMAT,
+        datefmt=LOG_DATE_FORMAT,
+    )
+    # Приглушаем шумные библиотеки
+    logging.getLogger("aiosqlite").setLevel(logging.WARNING)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
+
+    for handler in logging.root.handlers:
+        handler.addFilter(RequestIDFilter())
+
     docs_kwargs = {}
     if settings.ENVIRONMENT == "production":
         docs_kwargs = {"docs_url": None, "redoc_url": None, "openapi_url": None}
@@ -40,9 +72,11 @@ def create_app() -> FastAPI:
         **docs_kwargs,  # type: ignore[arg-type]
     )
 
+    origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -61,6 +95,16 @@ def create_app() -> FastAPI:
                 ).model_dump(),
             )
         return await call_next(request)
+
+    # Middleware: сквозной request_id для трассировки запросов в логах
+    @app.middleware("http")
+    async def add_request_id(request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID", uuid.uuid4().hex[:12])
+        request.state.request_id = request_id
+        request_id_var.set(request_id)
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
 
     app.include_router(ws_chat_router)
     app.include_router(auth_router)

@@ -91,7 +91,11 @@ async def register(
         teacher_invite_token=body.teacher_invite_token,
         db_session=session,
     )
-    return {"message": f"Код подтверждения отправлен на {body.email}"}
+    return ApiResponse.ok(
+        data=None,
+        message=f"Код подтверждения отправлен на {body.email}",
+        status_code=200,
+    )
 
 
 @auth_router.post(

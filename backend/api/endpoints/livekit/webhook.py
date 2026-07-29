@@ -123,6 +123,11 @@ async def livekit_webhook(
         )
 
     elif event == "room_finished":
+        parsed = parse_room_name(room_name)
+        if parsed is not None:
+            _course_id, lesson_id = parsed
+            await _finish_lesson_on_room_finished(lesson_id)
+
         try:
             await worker.flush_now()
         except Exception:
@@ -162,7 +167,7 @@ async def _save_recording_url(egress_id: str, file_path: str) -> None:
         async with db.session() as session:
             stmt = (
                 update(Lesson)
-                .where(Lesson.recording_url == egress_id)
+                .where(Lesson.egress_id == egress_id)
                 .values(recording_url=file_path)
             )
             await session.execute(stmt)
@@ -170,3 +175,30 @@ async def _save_recording_url(egress_id: str, file_path: str) -> None:
             logger.info("Запись сохранена: egress_id=%s, path=%s", egress_id, file_path)
     except Exception:
         logger.exception("Ошибка сохранения recording_url для egress_id=%s", egress_id)
+
+
+async def _finish_lesson_on_room_finished(lesson_id: int) -> None:
+    """Останавливает Egress и завершает урок при room_finished (препод закрыл вкладку)."""
+    try:
+        from backend.api.core.database import db
+        from backend.api.core.egress_service import egress_service
+        from backend.models.lessons import Lesson, LessonStatus
+
+        async with db.session() as session:
+            lesson = await session.get(Lesson, lesson_id)
+            if lesson is None:
+                return
+            if lesson.status != LessonStatus.RUNNING:
+                return  # уже завершён через end_lesson
+
+            if lesson.egress_id:
+                await egress_service.stop_recording(lesson.egress_id)
+                # egress_id НЕ сбрасываем — egress_ended вебхук использует его
+                # для поиска урока при сохранении recording_url
+
+            lesson.status = LessonStatus.ENDED
+            lesson.ended_at = datetime.now(timezone.utc)
+            await session.commit()
+            logger.info("Урок %d завершён по room_finished", lesson_id)
+    except Exception:
+        logger.exception("Ошибка завершения урока %d по room_finished", lesson_id)

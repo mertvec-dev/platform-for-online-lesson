@@ -1,5 +1,6 @@
 """Зависимости для role-based access control (RBAC)"""
 
+import logging
 from collections.abc import Awaitable, Callable
 
 from fastapi import Depends, HTTPException, status
@@ -10,6 +11,8 @@ from ....models import User
 from ....models.users import Role
 from ...core import db
 from .jwt_tokens import get_current_user_id
+
+logger = logging.getLogger(__name__)
 
 
 async def get_current_user(
@@ -22,12 +25,14 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if user is None:
+        logger.warning("Пользователь из токена не найден: user_id=%s", current_user_id)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Пользователь из токена не найден",
         )
 
     if not user.is_active:
+        logger.warning("Деактивированный пользователь пытается войти: user_id=%s", user.id)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Пользователь деактивирован",

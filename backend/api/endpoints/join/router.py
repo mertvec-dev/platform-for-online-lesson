@@ -1,5 +1,7 @@
 """Роуты для присоединение к курсу по ссылке"""
 
+import logging
+
 # NOTE: В этом файле лежит ПРИСОЕДИНЕНИЕ К КУРСУ ПО ССЫЛКЕ
 
 from fastapi import APIRouter, Depends, status
@@ -11,6 +13,8 @@ from ...core.response import ApiResponse
 from ..auth.dependencies import get_current_user
 from ..courses.invites.schemas import JoinCourseByInvite
 from ..courses.invites.service import invites_service
+
+logger = logging.getLogger(__name__)
 
 join_router = APIRouter(
     prefix="/invites",
@@ -33,6 +37,8 @@ async def join_by_ref(
         token=body.token,
         session=session,
     )
+
+    logger.info("Пользователь user_id=%s присоединился к курсу по приглашению", current_user.id)
 
     return ApiResponse.ok(
         data=None,

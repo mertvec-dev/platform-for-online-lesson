@@ -1,11 +1,15 @@
 """Вспомогательные проверки доступа, общие для всех доменов"""
 
+import logging
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from ...models import Course, CourseInvite, CourseMembership, CourseTeacher, Lesson
 from .database import db
+
+logger = logging.getLogger(__name__)
 
 
 async def _course_membership_exists(
@@ -47,6 +51,7 @@ async def get_course_or_404(
     course = result.scalar_one_or_none()
 
     if course is None:
+        logger.warning("Курс не найден: course_id=%s", course_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Курс не найден",
@@ -65,6 +70,7 @@ async def get_course_by_slug_or_404(
     course = result.scalar_one_or_none()
 
     if course is None:
+        logger.warning("Курс не найден по slug: slug=%s", slug)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Курс не найден",
@@ -83,6 +89,7 @@ async def get_lesson_or_404(
     lesson = result.scalar_one_or_none()
 
     if lesson is None:
+        logger.warning("Урок не найден: lesson_id=%s", lesson_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Урок не найден",
@@ -101,6 +108,7 @@ async def _get_course_of_lesson(
     course = result.scalar_one_or_none()
 
     if course is None:
+        logger.warning("Курс урока не найден: lesson_id=%s, course_id=%s", lesson.id, lesson.course_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Курс урока не найден",
@@ -118,6 +126,7 @@ async def get_invite_by_token_or_404(
     result = await session.execute(statement)
     invite = result.scalar_one_or_none()
     if invite is None:
+        logger.warning("Приглашение не найдено: token=%s", token)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Приглашение не найдено",

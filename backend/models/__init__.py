@@ -11,13 +11,13 @@ from .users import User
 
 __all__ = [
     "ChatMessage",
-    "Lesson",
-    "LessonLog",
-    "LivekitCourseToken",
     "Course",
     "CourseInvite",
     "CourseMembership",
     "CourseTeacher",
+    "Lesson",
+    "LessonLog",
+    "LivekitCourseToken",
     "TeacherInvite",
     "User",
 ]

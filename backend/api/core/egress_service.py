@@ -3,7 +3,7 @@
 import logging
 
 from livekit import api
-from livekit.api import RoomCompositeEgressRequest, StopEgressRequest
+from livekit.protocol.egress import RoomCompositeEgressRequest, StopEgressRequest
 
 from backend.api.core.config import settings
 

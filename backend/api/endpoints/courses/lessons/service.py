@@ -1,7 +1,7 @@
 """Сервис для уроков"""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import cast
 
 from fastapi import HTTPException, status
@@ -105,7 +105,7 @@ class LessonService:
             )
 
         lesson.status = LessonStatus.RUNNING
-        lesson.started_at = started_at or datetime.now(timezone.utc)
+        lesson.started_at = started_at or datetime.now(UTC)
         await session.commit()
 
         # Автозапуск записи
@@ -134,7 +134,7 @@ class LessonService:
             )
 
         lesson.status = LessonStatus.ENDED
-        lesson.ended_at = ended_at or datetime.now(timezone.utc)
+        lesson.ended_at = ended_at or datetime.now(UTC)
 
         # Остановка записи
         if lesson.egress_id:

@@ -60,3 +60,4 @@ reportUnknownLambdaType = false
 reportArgumentType = false
 reportAttributeAccessIssue = false
 reportOptionalMemberAccess = false
+reportCallInDefaultInitializer = false

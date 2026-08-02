@@ -1,6 +1,6 @@
 """Модель распределения пользователей по курсам"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, UniqueConstraint
@@ -47,17 +47,17 @@ class CourseMembership(SQLModel, table=True):
     is_active: bool = Field(default=True)
 
     joined_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
     )
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
-        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
+        sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
     )
 
     # Отношения

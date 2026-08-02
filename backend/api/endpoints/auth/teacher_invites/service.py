@@ -1,7 +1,7 @@
 """Сервис инвайт-токенов для преподавателей"""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from secrets import token_urlsafe
 from typing import cast
 
@@ -59,7 +59,7 @@ class TeacherInviteService:
                 status_code=status.HTTP_410_GONE, detail="Токен деактивирован"
             )
 
-        if invite.expires_at and invite.expires_at < datetime.now(timezone.utc):
+        if invite.expires_at and invite.expires_at < datetime.now(UTC):
             raise HTTPException(
                 status_code=status.HTTP_410_GONE, detail="Срок действия токена истёк"
             )

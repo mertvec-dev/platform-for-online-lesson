@@ -1,6 +1,6 @@
 """Модель таблицы chat_messages"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String
@@ -38,7 +38,7 @@ class ChatMessage(SQLModel, table=True):
     )
 
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
         index=True,
     )

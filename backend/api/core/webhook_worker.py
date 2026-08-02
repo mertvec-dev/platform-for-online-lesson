@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 from sqlalchemy import select as sa_select
 
@@ -109,7 +109,7 @@ class WebhookBufferWorker:
                         user_id=j["user_id"],
                         session_id=j.get("session_id"),
                         joined_at=_parse_ts(j.get("joined_at")),
-                        webhook_received_at=datetime.now(timezone.utc),
+                        webhook_received_at=datetime.now(UTC),
                     )
                     for j in joins
                 ]
@@ -124,7 +124,7 @@ class WebhookBufferWorker:
                         log.duration_seconds = int(
                             (log.left_at - log.joined_at).total_seconds()
                         )
-                        log.webhook_received_at = datetime.now(timezone.utc)
+                        log.webhook_received_at = datetime.now(UTC)
 
             await session.commit()
 
@@ -143,7 +143,7 @@ class WebhookBufferWorker:
             result = await session.execute(stmt)
             running_lessons = result.scalars().all()
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             stale = [
                 lesson
                 for lesson in running_lessons
@@ -202,11 +202,11 @@ async def _find_open_log(session, lv: dict) -> LessonLog | None:
 
 def _parse_ts(val: str | None) -> datetime:
     if not val:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     try:
-        return datetime.fromisoformat(val.replace("Z", "+00:00"))
+        return datetime.fromisoformat(val)
     except ValueError:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
 worker = WebhookBufferWorker()

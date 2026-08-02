@@ -2,7 +2,7 @@
 
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
@@ -23,7 +23,7 @@ def create_token(data: dict[str, Any], expires_in: int) -> str:
     `expires_in` задается в секундах.
     """
     payload = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    expire = datetime.now(UTC) + timedelta(seconds=expires_in)
     payload.update({"exp": expire, "jti": uuid.uuid4().hex})
 
     return jwt.encode(

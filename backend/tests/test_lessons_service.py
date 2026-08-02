@@ -1,6 +1,6 @@
 """Тесты LessonService"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,7 +40,7 @@ async def test_create_lesson(db_session: AsyncSession):
         title="Урок 1",
         description="Описание урока один",
         max_participants=30,
-        scheduled_at=datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        scheduled_at=datetime(2026, 7, 10, 12, 0, tzinfo=UTC),
         duration_minutes=90,
         session=db_session,
     )
@@ -59,7 +59,7 @@ async def test_start_lesson(db_session: AsyncSession):
         "Урок",
         "Описание урока один",
         30,
-        datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        datetime(2026, 7, 10, 12, 0, tzinfo=UTC),
         60,
         db_session,
     )
@@ -78,7 +78,7 @@ async def test_end_lesson(db_session: AsyncSession):
         "Урок",
         "Описание урока один",
         30,
-        datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        datetime(2026, 7, 10, 12, 0, tzinfo=UTC),
         60,
         db_session,
     )
@@ -98,7 +98,7 @@ async def test_cannot_start_ended_lesson(db_session: AsyncSession):
         "Урок",
         "Описание урока один",
         30,
-        datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        datetime(2026, 7, 10, 12, 0, tzinfo=UTC),
         60,
         db_session,
     )
@@ -122,7 +122,7 @@ async def test_update_lesson_changes_title(db_session: AsyncSession):
         "Старый заголовок",
         "Описание урока один",
         30,
-        datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        datetime(2026, 7, 10, 12, 0, tzinfo=UTC),
         60,
         db_session,
     )
@@ -148,7 +148,7 @@ async def test_delete_lesson(db_session: AsyncSession):
         "Урок",
         "Описание урока один",
         30,
-        datetime(2026, 7, 10, 12, 0, tzinfo=timezone.utc),
+        datetime(2026, 7, 10, 12, 0, tzinfo=UTC),
         60,
         db_session,
     )

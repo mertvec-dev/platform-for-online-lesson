@@ -1,6 +1,6 @@
 """Модель для таблицы users"""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -65,13 +65,13 @@ class User(SQLModel, table=True):
     )
 
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
     )
     updated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
+        default_factory=lambda: datetime.now(UTC),
         sa_type=DateTime(timezone=True),  # type: ignore[arg-type]
-        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)},
+        sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
     )
 
     # Отношения

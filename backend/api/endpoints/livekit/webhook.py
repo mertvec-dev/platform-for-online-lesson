@@ -4,7 +4,7 @@ import hashlib
 import hmac
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Header, Request
 from starlette.responses import Response
@@ -145,11 +145,11 @@ async def livekit_webhook(
 
 def _parse_timestamp(raw: str | None) -> datetime:
     if not raw:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     try:
-        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        return datetime.fromisoformat(raw)
     except ValueError:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
 async def _save_recording_url(egress_id: str, file_path: str) -> None:
@@ -197,7 +197,7 @@ async def _finish_lesson_on_room_finished(lesson_id: int) -> None:
                 # для поиска урока при сохранении recording_url
 
             lesson.status = LessonStatus.ENDED
-            lesson.ended_at = datetime.now(timezone.utc)
+            lesson.ended_at = datetime.now(UTC)
             await session.commit()
             logger.info("Урок %d завершён по room_finished", lesson_id)
     except Exception:

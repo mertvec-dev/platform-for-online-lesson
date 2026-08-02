@@ -9,14 +9,14 @@ from .dependencies import (
 from .schemas import CourseListItem, CourseRead, CreateCourse, UpdateCourse
 
 __all__ = [
-    "CreateCourse",
+    "CourseAccessPolicy",
     "CourseListItem",
     "CourseRead",
+    "CreateCourse",
     "UpdateCourse",
-    "CourseAccessPolicy",
     "ensure_can_create_course",
     "ensure_can_delete_course_by_slug",
-    "ensure_course_member_or_admin_by_slug",
     "ensure_course_creator_or_admin_by_slug",
+    "ensure_course_member_or_admin_by_slug",
     "ensure_course_teacher_or_admin_by_slug",
 ]

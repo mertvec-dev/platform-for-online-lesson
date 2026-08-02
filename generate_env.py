@@ -202,17 +202,16 @@ def main() -> None:
 
     ENV_FILE.write_text(content, encoding="utf-8")
 
-    if not is_dev:
-        _write_egress_config(
-            api_key=lk_api_key,
-            api_secret=lk_api_secret,
-            redis_pass=redis_pass,
-            s3_access="minioadmin",
-            s3_secret="minioadmin",
-            s3_bucket="recordings",
-            s3_region="us-east-1",
-            s3_endpoint="http://minio:9000",
-        )
+    _write_egress_config(
+        api_key=lk_api_key,
+        api_secret=lk_api_secret,
+        redis_pass=redis_pass,
+        s3_access="minioadmin",
+        s3_secret="minioadmin",
+        s3_bucket="recordings",
+        s3_region="us-east-1",
+        s3_endpoint="http://minio:9000",
+    )
     print(f"\nФайл {ENV_FILE} создан.")
 
 
